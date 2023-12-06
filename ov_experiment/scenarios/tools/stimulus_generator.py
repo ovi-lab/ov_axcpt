@@ -4,6 +4,8 @@ import string
 from PIL import Image, ImageDraw, ImageFont
 
 def makeStim(text, filePath, imgSize=(3840,2160), color="white", size=40):
+    # `text` is the text to write on the stimulus. Must either be a string
+    # containing a single line, or a list of such strings
     
     font = ImageFont.truetype("arial.ttf", size=size)
     _text = text

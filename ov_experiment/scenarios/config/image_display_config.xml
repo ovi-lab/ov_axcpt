@@ -1,0 +1,64 @@
+<OpenViBE-SettingsOverride>
+	<SettingValue>false</SettingValue>
+    <SettingValue>false</SettingValue>
+    <SettingValue>OVTK_StimulationId_VisualStimulationStop</SettingValue>
+
+    <SettingValue>${Player_ScenarioDirectory}/assets/fixationCross.png</SettingValue>
+	<SettingValue>OVTK_GDF_Cross_On_Screen</SettingValue>
+
+    <SettingValue>${Player_ScenarioDirectory}/assets/instructions.png</SettingValue>
+	<SettingValue>OVTK_StimulationId_Label_A0</SettingValue>
+
+    <SettingValue>${Player_ScenarioDirectory}/assets/A.png</SettingValue>
+	<SettingValue>OVTK_StimulationId_Label_01</SettingValue>
+    <SettingValue>${Player_ScenarioDirectory}/assets/B.png</SettingValue>
+	<SettingValue>OVTK_StimulationId_Label_02</SettingValue>
+    <SettingValue>${Player_ScenarioDirectory}/assets/C.png</SettingValue>
+	<SettingValue>OVTK_StimulationId_Label_03</SettingValue>
+    <SettingValue>${Player_ScenarioDirectory}/assets/D.png</SettingValue>
+	<SettingValue>OVTK_StimulationId_Label_04</SettingValue>
+    <SettingValue>${Player_ScenarioDirectory}/assets/E.png</SettingValue>
+	<SettingValue>OVTK_StimulationId_Label_05</SettingValue>
+    <SettingValue>${Player_ScenarioDirectory}/assets/F.png</SettingValue>
+	<SettingValue>OVTK_StimulationId_Label_06</SettingValue>
+    <SettingValue>${Player_ScenarioDirectory}/assets/G.png</SettingValue>
+	<SettingValue>OVTK_StimulationId_Label_07</SettingValue>
+    <SettingValue>${Player_ScenarioDirectory}/assets/H.png</SettingValue>
+	<SettingValue>OVTK_StimulationId_Label_08</SettingValue>
+    <SettingValue>${Player_ScenarioDirectory}/assets/I.png</SettingValue>
+	<SettingValue>OVTK_StimulationId_Label_09</SettingValue>
+    <SettingValue>${Player_ScenarioDirectory}/assets/J.png</SettingValue>
+	<SettingValue>OVTK_StimulationId_Label_10</SettingValue>
+    <SettingValue>${Player_ScenarioDirectory}/assets/K.png</SettingValue>
+	<SettingValue>OVTK_StimulationId_Label_11</SettingValue>
+    <SettingValue>${Player_ScenarioDirectory}/assets/L.png</SettingValue>
+	<SettingValue>OVTK_StimulationId_Label_12</SettingValue>
+    <SettingValue>${Player_ScenarioDirectory}/assets/M.png</SettingValue>
+	<SettingValue>OVTK_StimulationId_Label_13</SettingValue>
+    <SettingValue>${Player_ScenarioDirectory}/assets/N.png</SettingValue>
+	<SettingValue>OVTK_StimulationId_Label_14</SettingValue>
+    <SettingValue>${Player_ScenarioDirectory}/assets/O.png</SettingValue>
+	<SettingValue>OVTK_StimulationId_Label_15</SettingValue>
+    <SettingValue>${Player_ScenarioDirectory}/assets/P.png</SettingValue>
+	<SettingValue>OVTK_StimulationId_Label_16</SettingValue>
+    <SettingValue>${Player_ScenarioDirectory}/assets/Q.png</SettingValue>
+	<SettingValue>OVTK_StimulationId_Label_17</SettingValue>
+    <SettingValue>${Player_ScenarioDirectory}/assets/R.png</SettingValue>
+	<SettingValue>OVTK_StimulationId_Label_18</SettingValue>
+    <SettingValue>${Player_ScenarioDirectory}/assets/S.png</SettingValue>
+	<SettingValue>OVTK_StimulationId_Label_19</SettingValue>
+    <SettingValue>${Player_ScenarioDirectory}/assets/T.png</SettingValue>
+	<SettingValue>OVTK_StimulationId_Label_20</SettingValue>
+    <SettingValue>${Player_ScenarioDirectory}/assets/U.png</SettingValue>
+	<SettingValue>OVTK_StimulationId_Label_21</SettingValue>
+    <SettingValue>${Player_ScenarioDirectory}/assets/V.png</SettingValue>
+	<SettingValue>OVTK_StimulationId_Label_22</SettingValue>
+    <SettingValue>${Player_ScenarioDirectory}/assets/W.png</SettingValue>
+	<SettingValue>OVTK_StimulationId_Label_23</SettingValue>
+    <SettingValue>${Player_ScenarioDirectory}/assets/X.png</SettingValue>
+	<SettingValue>OVTK_StimulationId_Label_24</SettingValue>
+    <SettingValue>${Player_ScenarioDirectory}/assets/Y.png</SettingValue>
+	<SettingValue>OVTK_StimulationId_Label_25</SettingValue>
+    <SettingValue>${Player_ScenarioDirectory}/assets/Z.png</SettingValue>
+	<SettingValue>OVTK_StimulationId_Label_26</SettingValue>
+</OpenViBE-SettingsOverride>
