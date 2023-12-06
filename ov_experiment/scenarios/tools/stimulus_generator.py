@@ -32,8 +32,8 @@ def makeStim(text, filePath, imgSize=(3840,2160), color="white", size=40):
     for k in range(len(xy)):
         xy[k][0] = (imgSize[0] - xy[k][0]) / 2
             
-        y0 = xy[k - 1][1] if k > 0 else (imgSize[1] - totalHeight) / 2
-        xy[k][1] = y0 + xy[k][1]
+        y0 = (imgSize[1] - totalHeight) / 2 if k==0 else xy[k - 1][1] 
+        xy[k][1] = y0 + (0 if k==0 else xy[k][1])
         
     # Write the text on the image
     for k, line in enumerate(_text):
@@ -61,13 +61,14 @@ def makeInstructions(filePath, **kwargs):
     ]
     makeStim(instructions, filePath, **kwargs)
     
-def makeAllAssets(**kwargs):
+def makeAllAssets(letter_kwargs={}, instructions_kwargs={}):
     start = os.path.dirname(__file__)
     fileDir = os.path.abspath(os.path.join(start, "..", "assets"))
     os.makedirs(fileDir, exist_ok=True)
     
-    makeLetterStims(fileDir, **kwargs)
-    makeInstructions(os.path.join(fileDir, "instructions.png"), **kwargs)
+    makeLetterStims(fileDir, **letter_kwargs)
+    filePath = os.path.join(fileDir, "instructions.png")
+    makeInstructions(filePath, **instructions_kwargs)
     
 if __name__=="__main__":
-    makeAllAssets()
+    makeAllAssets(letter_kwargs={"size":80})
