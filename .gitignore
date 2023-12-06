@@ -168,4 +168,5 @@ cython_debug/
 # Custom
 
 **/sandbox.ipynb
+ov_experiment/scenarios/assets/*
 .vscode
