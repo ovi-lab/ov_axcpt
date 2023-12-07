@@ -1,6 +1,8 @@
+import math
 import os
 import string
 
+import numpy as np
 from PIL import Image, ImageDraw, ImageFont
 
 def makeStim(text, filePath, imgSize=(3840,2160), color="white", size=40):
@@ -61,7 +63,35 @@ def makeInstructions(filePath, **kwargs):
     ]
     makeStim(instructions, filePath, **kwargs)
     
-def main(letter_kwargs={}, instructions_kwargs={}):
+def makeFixationCross(filePath, size=(100,100), imgSize=(3840,2160), **kwargs):
+    # Create the image
+    img = Image.new('RGB', imgSize, color='black')
+    imgDraw = ImageDraw.Draw(img)
+    
+    # Define the upper left and lower right corners of the cross bounding box
+    # centered on the image
+    box = np.floor(np.array([[-0.5, 0.5], [0.5, -0.5]]) * np.array(size))
+    box = box + np.floor(np.array(imgSize) / 2)
+    box = box.astype(int)
+    
+    # Define the coordinates for the horizontal and vertical lines of the cross
+    center = box[0] + np.floor((box[1] - box[0]) / 2).astype(int)
+    lines = []
+    for k in range(2):
+        lines.append(box.copy())
+        lines[k][:,k] = center[k]
+    
+    # Draw the lines
+    _kwargs = {"fill" : "white", "width" : 5}
+    _kwargs.update(kwargs)
+    for xy in lines:
+        imgDraw.line(xy.flatten().tolist(), **_kwargs)
+        
+    # Save the image
+    img.save(filePath)
+    
+    
+def main(letter_kwargs={}, instructions_kwargs={}, cross_kwargs={}):
     # Make the instructions and letter stimuli
     
     start = os.path.dirname(__file__)
@@ -71,6 +101,8 @@ def main(letter_kwargs={}, instructions_kwargs={}):
     makeLetterStims(fileDir, **letter_kwargs)
     filePath = os.path.join(fileDir, "instructions.png")
     makeInstructions(filePath, **instructions_kwargs)
+    filePath = os.path.join(fileDir, "fixation_cross.png")
+    makeFixationCross(filePath, **cross_kwargs)
     
 if __name__=="__main__":
     main(letter_kwargs={"size":80})

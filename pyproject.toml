@@ -10,6 +10,7 @@ packages = [{include = "src"}]
 python = "^3.10"
 jupyter = "^1.0.0"
 pillow = "^10.1.0"
+numpy = "^1.26.2"
 
 
 [build-system]

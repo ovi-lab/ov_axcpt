@@ -3,7 +3,7 @@
     <SettingValue>false</SettingValue>
     <SettingValue>OVTK_StimulationId_VisualStimulationStop</SettingValue>
 
-    <SettingValue>${Player_ScenarioDirectory}/assets/fixationCross.png</SettingValue>
+    <SettingValue>${Player_ScenarioDirectory}/assets/fixation_cross.png</SettingValue>
 	<SettingValue>OVTK_GDF_Cross_On_Screen</SettingValue>
 
     <SettingValue>${Player_ScenarioDirectory}/assets/instructions.png</SettingValue>
