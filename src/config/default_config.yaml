@@ -6,3 +6,42 @@
 
 PATH:
   - src/config.yaml
+
+# General
+
+data_dir: ov_experiment\scenarios\data
+data_format: gdf
+
+ov_stim_list_path: src\tools\stimulation_list.txt
+
+# Openvibe Scenario
+
+# These values are only for reference by analysis code - the actual openvibe
+# scenario does not read from or update them. They must manually be updated
+# here if the corresponding values in the openvibe experiment are changed.
+num_trials_A_X: 144
+num_trials_nA_nX: 48
+durations: # All in seconds
+  ISI: 0.250
+  ITI: # These are the set of POSSIBLE values for ITI
+    - 1.500
+    - 2.000
+    - 2.500
+  cue_stimulus: 0.250
+  probe_stimulus: 0.250
+
+# Analysis Parameters
+
+raw_data_path: 
+session_name: 
+
+target_channels: # must be list or None
+non_data_channels: # must be a list or None
+
+notch_freqs:
+l_freq:
+h_freq:
+
+metadata_timeIntervalPadding: 0.05
+epoch_tmin: -0.5
+epoch_tmax: 1
