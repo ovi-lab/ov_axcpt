@@ -61,7 +61,9 @@ def makeInstructions(filePath, **kwargs):
     ]
     makeStim(instructions, filePath, **kwargs)
     
-def makeAllAssets(letter_kwargs={}, instructions_kwargs={}):
+def main(letter_kwargs={}, instructions_kwargs={}):
+    # Make the instructions and letter stimuli
+    
     start = os.path.dirname(__file__)
     fileDir = os.path.abspath(os.path.join(start, "..", "assets"))
     os.makedirs(fileDir, exist_ok=True)
@@ -71,4 +73,4 @@ def makeAllAssets(letter_kwargs={}, instructions_kwargs={}):
     makeInstructions(filePath, **instructions_kwargs)
     
 if __name__=="__main__":
-    makeAllAssets(letter_kwargs={"size":80})
+    main(letter_kwargs={"size":80})
