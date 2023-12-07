@@ -1,0 +1,7 @@
+# Default Config Values 
+#
+# Specify paths relative to the root directory (directory
+# containing the gitignore file)
+###############################################################################
+
+PATH:
