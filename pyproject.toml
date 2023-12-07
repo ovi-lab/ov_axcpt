@@ -11,6 +11,8 @@ python = "^3.10"
 jupyter = "^1.0.0"
 pillow = "^10.1.0"
 numpy = "^1.26.2"
+mne = "^1.6.0"
+pyqt6 = "^6.6.1"
 
 
 [build-system]
