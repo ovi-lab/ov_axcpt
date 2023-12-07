@@ -5,7 +5,7 @@ import string
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont
 
-def makeStim(text, filePath, imgSize=(3840,2160), color="white", size=40):
+def makeTextStim(text, filePath, imgSize=(1536,1024), color="white", size=40):
     # `text` is the text to write on the stimulus. Must either be a string
     # containing a single line, or a list of such strings
     
@@ -17,6 +17,7 @@ def makeStim(text, filePath, imgSize=(3840,2160), color="white", size=40):
     # Create the image
     img = Image.new('RGB', imgSize, color='black')
     imgDraw = ImageDraw.Draw(img)
+    imgDraw.fontmode = "L"
     
     # Get the location of all text in the image
     xy = []
@@ -43,7 +44,8 @@ def makeStim(text, filePath, imgSize=(3840,2160), color="white", size=40):
             xy[k], 
             line, 
             font=font, 
-            fill=color
+            fill=color,
+            align="center"
         )
         
     # Save the image
@@ -52,7 +54,7 @@ def makeStim(text, filePath, imgSize=(3840,2160), color="white", size=40):
 def makeLetterStims(dirName, **kwargs):
     for s in string.ascii_uppercase:
         filePath = os.path.abspath(os.path.join(dirName, s + ".png"))
-        makeStim(s, filePath, **kwargs)
+        makeTextStim(s, filePath, **kwargs)
         
 def makeInstructions(filePath, **kwargs):
     instructions = [
@@ -61,9 +63,9 @@ def makeInstructions(filePath, **kwargs):
         "This is the instruction page :)",
         "Press the space bar to continue"
     ]
-    makeStim(instructions, filePath, **kwargs)
+    makeTextStim(instructions, filePath, **kwargs)
     
-def makeFixationCross(filePath, size=(100,100), imgSize=(3840,2160), **kwargs):
+def makeFixationCross(filePath, size=(100,100), imgSize=(1536,1024), **kwargs):
     # Create the image
     img = Image.new('RGB', imgSize, color='black')
     imgDraw = ImageDraw.Draw(img)
@@ -91,18 +93,23 @@ def makeFixationCross(filePath, size=(100,100), imgSize=(3840,2160), **kwargs):
     img.save(filePath)
     
     
-def main(letter_kwargs={}, instructions_kwargs={}, cross_kwargs={}):
+def main(letter_kwargs={}, instructions_kwargs={}, cross_kwargs={}, **kwargs):
     # Make the instructions and letter stimuli
     
     start = os.path.dirname(__file__)
     fileDir = os.path.abspath(os.path.join(start, "..", "assets"))
     os.makedirs(fileDir, exist_ok=True)
     
+    letter_kwargs.update(kwargs)
     makeLetterStims(fileDir, **letter_kwargs)
+    
     filePath = os.path.join(fileDir, "instructions.png")
+    instructions_kwargs.update(kwargs)
     makeInstructions(filePath, **instructions_kwargs)
+    
     filePath = os.path.join(fileDir, "fixation_cross.png")
+    cross_kwargs.update(kwargs)
     makeFixationCross(filePath, **cross_kwargs)
     
 if __name__=="__main__":
-    main(letter_kwargs={"size":80})
+    main(letter_kwargs={"size":64})
