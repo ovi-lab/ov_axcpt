@@ -1,0 +1,42 @@
+visual:
+  image_display:
+    onset:
+      fixation_cross: OVTK_GDF_Cross_On_Screen
+      instruction:
+        instruction_1: OVTK_StimulationId_Label_A0
+      stimulus:
+        A: OVTK_StimulationId_Label_01
+        B: OVTK_StimulationId_Label_02
+        C: OVTK_StimulationId_Label_03
+        D: OVTK_StimulationId_Label_04
+        E: OVTK_StimulationId_Label_05
+        F: OVTK_StimulationId_Label_06
+        G: OVTK_StimulationId_Label_07
+        H: OVTK_StimulationId_Label_08
+        I: OVTK_StimulationId_Label_09
+        J: OVTK_StimulationId_Label_10
+        K: OVTK_StimulationId_Label_11
+        L: OVTK_StimulationId_Label_12
+        M: OVTK_StimulationId_Label_13
+        N: OVTK_StimulationId_Label_14
+        O: OVTK_StimulationId_Label_15
+        P: OVTK_StimulationId_Label_16
+        Q: OVTK_StimulationId_Label_17
+        R: OVTK_StimulationId_Label_18
+        S: OVTK_StimulationId_Label_19
+        T: OVTK_StimulationId_Label_20
+        U: OVTK_StimulationId_Label_21
+        V: OVTK_StimulationId_Label_22
+        W: OVTK_StimulationId_Label_23
+        X: OVTK_StimulationId_Label_24
+        Y: OVTK_StimulationId_Label_25
+        Z: OVTK_StimulationId_Label_26
+    clear_image: OVTK_StimulationId_VisualStimulationStop
+annotation:
+  timing:
+    experiment:
+      start: OVTK_StimulationId_ExperimentStart
+      stop: OVTK_StimulationId_ExperimentStop
+    trial:
+      start: OVTK_StimulationId_TrialStart
+      stop: OVTK_StimulationId_TrialStop

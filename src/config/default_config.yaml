@@ -13,6 +13,7 @@ data_dir: ov_experiment\scenarios\data
 data_format: gdf
 
 ov_stim_list_path: src\tools\stimulation_list.txt
+axcpt_stim_groups_path: src\tools\axcpt_stimulation_groups.yaml
 
 # Openvibe Scenario
 

@@ -4,6 +4,7 @@ import logging
 import os
 
 import mne
+import yaml
 
 from src.config import CONFIG
 
@@ -99,3 +100,59 @@ def loadData(
     raw = mne.io.read_raw(dataPath, **_kwargs)
     
     return raw, dataPath
+
+def getEvents(
+        raw: mne.io.BaseRaw
+        ):
+    # Extract events from annotations, and give them meaningful names
+    
+    events, eventDict = mne.events_from_annotations(raw)
+    
+    # eventDict maps "OV stim id" -> "MNE event id". To insead use the names of
+    # the OV stims as keys, use the inverse of the bijective mapping returned
+    # by getOvStimCodes(), which maps "OV stim name" -> "OV stim id"
+    ovStimCodes = getOVStimCodes()
+    ovStimCodesRev = {v : k for (k, v) in ovStimCodes.items()}
+    assert len(ovStimCodes) == len(ovStimCodesRev)
+    eventDict = {ovStimCodesRev[int(k)]: v for k, v in eventDict.items()}
+    
+    # Organize eventDict labels into appropriate groups
+    # Load the stimulation groups
+    stimGroupsFile = os.path.join(CONFIG.root, CONFIG.axcpt_stim_groups_path)
+    with open(stimGroupsFile, "r") as f:
+        stimGroups = yaml.safe_load(f)
+    # Combine group names into a single "group label" (keys) for each label
+    # (values)
+    groupLabels = {}
+    def combineGroupNames(d, prefix):
+        _prefix = "" if prefix is None else prefix + "/"
+        if isinstance(d, str):
+            groupLabels[_prefix + d] = d
+        else:
+            for k,v in d.items():
+                combineGroupNames(v, _prefix + k)
+    combineGroupNames(stimGroups, None)
+    # Rename the eventDict labels using the group labels
+    groupLabelsRev = {v : k for (k, v) in groupLabels.items()}
+    assert len(groupLabels) == len(groupLabelsRev)
+    eventDict = {groupLabelsRev[k] : v for (k, v) in eventDict.items()}
+        
+    return events, eventDict
+
+def getOVStimCodes() -> dict[str, int]:
+    ovStimListPath = os.path.join(CONFIG.root, CONFIG.ov_stim_list_path)
+    with open(ovStimListPath, "r") as f:
+        lines = f.readlines()
+        
+    ovStimCodes = {}
+    for line in lines:
+        entries = line.split()
+        ovStimCodes[entries[0]] = int(entries[2], base=16)
+        
+    if not len(ovStimCodes) == len(lines):
+        raise RuntimeError(
+            "The number of stimulation codes read from the stimulations " +
+            "file is not equal to the number of lines in that file."
+        )
+        
+    return ovStimCodes
