@@ -39,9 +39,10 @@ session_name:
 target_channels: # must be list or None
 non_data_channels: # must be a list or None
 
-notch_freqs:
-l_freq:
-h_freq:
+apply_filters: True
+notch_freqs: 60
+l_freq: 1
+h_freq: 100
 
 metadata_timeIntervalPadding: 0.05
 epoch_tmin: -0.5

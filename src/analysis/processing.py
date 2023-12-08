@@ -156,3 +156,29 @@ def getOVStimCodes() -> dict[str, int]:
         )
         
     return ovStimCodes
+
+def applyFilters(
+        raw: mne.io.BaseRaw,
+        picks: str|list[str]|None = None,
+        copy: bool = True
+        ) -> mne.io.BaseRaw:
+    
+    # Apply necessary filtering specified in config
+    raw_filtered = raw.copy() if copy else raw
+    
+    if CONFIG.apply_filters:
+        # Data must be loaded to apply filtering
+        raw_filtered.load_data()
+        
+        # Apply notch filter to remove noise spikes
+        notch_freqs = CONFIG.notch_freqs
+        if notch_freqs is not None:
+            raw_filtered.notch_filter(freqs=notch_freqs, picks=picks)
+            
+        # Apply bandpass filter to isolate relevant frequencies
+        l_freq = CONFIG.l_freq
+        h_freq = CONFIG.h_freq
+        if l_freq is not None or h_freq is not None:
+            raw_filtered.filter(l_freq, h_freq, picks=picks)
+        
+    return raw_filtered
