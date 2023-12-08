@@ -104,3 +104,16 @@ class _Config:
         return self.__getConfig()
     
 CONFIG = _Config()
+
+# Temporarily adds the specified config file to CONFIG's path. Behaviour is
+# undefined if CONFIG.PATH already contains the specified config file, or if it
+# added/removed while in this context manager
+class TempConfig:
+    def __init__(self, path):
+        self._path = path
+    
+    def __enter__(self):
+        CONFIG.PATH.append(self._path)
+    
+    def __exit__(self, exc_type, exc_value, exc_tb):
+        CONFIG.PATH.remove(self._path)
