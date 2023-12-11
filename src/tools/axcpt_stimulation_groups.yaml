@@ -32,11 +32,18 @@ visual:
         Y: OVTK_StimulationId_Label_25
         Z: OVTK_StimulationId_Label_26
     clear_image: OVTK_StimulationId_VisualStimulationStop
-annotation:
-  timing:
-    experiment:
-      start: OVTK_StimulationId_ExperimentStart
-      stop: OVTK_StimulationId_ExperimentStop
-    trial:
-      start: OVTK_StimulationId_TrialStart
-      stop: OVTK_StimulationId_TrialStop
+keyboard:
+  button_released: OVTK_StimulationId_Label_FF
+  button_pressed:
+    response:
+      left: OVTK_GDF_Left
+      right: OVTK_GDF_Right
+    control:
+      space: OVTK_StimulationId_Number_1B
+timing:
+  experiment:
+    start: OVTK_StimulationId_ExperimentStart
+    stop: OVTK_StimulationId_ExperimentStop
+  trial:
+    start: OVTK_StimulationId_TrialStart
+    stop: OVTK_StimulationId_TrialStop
