@@ -13,6 +13,7 @@ pillow = "^10.1.0"
 numpy = "^1.26.2"
 mne = "^1.6.0"
 pyqt6 = "^6.6.1"
+pandas = "^2.1.4"
 
 
 [build-system]
