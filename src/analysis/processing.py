@@ -96,10 +96,41 @@ class AXCPT:
                 events, eventDict, rawFiltered.info["sfreq"]
             )
             
-            return cls.getMetadata(events, eventDict, rawFiltered.info["sfreq"])
+            # Epoch the data using the metadata and corresponding events / eventIDs
+            epochs = mne.Epochs(
+                rawFiltered,
+                events_md,
+                event_id=eventDict_md,
+                tmin=CONFIG.epoch_tmin,
+                tmax=CONFIG.epoch_tmax,
+                metadata=metadata,
+                preload=True
+            )
             
-            
-            
+        return cls(
+            data={
+                "raw" : raw,
+                "rawFiltered" : rawFiltered,
+                "epochs" : epochs
+            },
+            events={
+                "raw" : events,
+                "rawFiltered" : events,
+                "epochs" : events_md
+            },
+            eventDict={
+                "raw" : eventDict,
+                "rawFiltered" : eventDict,
+                "epochs" : eventDict_md
+            },
+            sessionDir=sessionDir,
+            sessionConfigPath=configPath,
+            channelGroups={
+                "dataCH" : dataCH,
+                "nonDataCH" : nonDataCH,
+                "targetCH" : targetCH
+            }
+        )      
 
     @classmethod
     def loadData(
@@ -389,7 +420,3 @@ class AXCPT:
         )
         
         return metadata, events_md, eventDict_md
-        
-
-
-

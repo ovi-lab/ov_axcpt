@@ -44,6 +44,5 @@ notch_freqs: 60
 l_freq: 1
 h_freq: 100
 
-metadata_timeIntervalPadding: 0.05
 epoch_tmin: -0.5
 epoch_tmax: 1
