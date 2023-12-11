@@ -5,6 +5,7 @@ import os
 
 import mne
 import numpy as np
+import pandas as pd
 import yaml
 
 from src.config import CONFIG, TempConfig
@@ -110,17 +111,17 @@ class AXCPT:
         return cls(
             data={
                 "raw" : raw,
-                "rawFiltered" : rawFiltered,
+                "rawProcessed" : rawFiltered,
                 "epochs" : epochs
             },
             events={
                 "raw" : events,
-                "rawFiltered" : events,
+                "rawProcessed" : events,
                 "epochs" : events_md
             },
             eventDict={
                 "raw" : eventDict,
-                "rawFiltered" : eventDict,
+                "rawProcessed" : eventDict,
                 "epochs" : eventDict_md
             },
             sessionDir=sessionDir,
@@ -420,3 +421,48 @@ class AXCPT:
         )
         
         return metadata, events_md, eventDict_md
+    
+    def getClassifierData(self):
+        with TempConfig(self.sessionConfigPath):
+            alpha = CONFIG.alpha
+            if not (alpha > 0 and alpha <= 0.5):
+                raise RuntimeError(
+                    "Config value `alpha` must be in range (0, 0.5], but " +
+                    f"got {alpha}"
+                )
+            
+            metadata = self.data["epochs"].metadata.copy(deep=False)
+            cData = pd.DataFrame(index=metadata.index)
+            
+            # Track which trials to select or drop
+            cData["select"] = True
+            
+            # Get the average referenced (corrected) response times
+            crt = "corrected_response_time"
+            cData[crt] = (
+                metadata["response_time"] - metadata["response_time"].mean()
+            )
+            
+            # Label the attention state
+            q = [0., alpha, 1. - alpha, 1.]
+            labels = ["high", "medium", "low"]
+            if alpha == 0.5:
+                q.pop(2)
+                labels.pop(1)
+            cData["label"] = pd.qcut(
+                cData[crt],
+                q,
+                labels=labels,
+                precision=6
+            )
+            
+            # Drop any trials that are missing data
+            cData.loc[cData.isna().any(axis=1), "select"] = False
+            
+        return cData
+    
+    def trainClassifier(self, features):
+        pass
+        
+        
+        
