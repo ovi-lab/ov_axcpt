@@ -8,7 +8,7 @@
 			<TypeIdentifier>(0x79a9edeb, 0x245d83fc)</TypeIdentifier>
 			<Name>Participant</Name>
 			<DefaultValue>0</DefaultValue>
-			<Value>0</Value>
+			<Value>1</Value>
 		</Setting>
 	</Settings>
 	<Inputs></Inputs>
@@ -220,7 +220,7 @@
 					<TypeIdentifier>(0x330306dd, 0x74a95f98)</TypeIdentifier>
 					<Name>Filename</Name>
 					<DefaultValue>record-[$core{date}-$core{time}].ov</DefaultValue>
-					<Value>${Player_ScenarioDirectory}/data/record_p-$var{Participant}_b-$core{date}-$core{time}.ov</Value>
+					<Value>${Player_ScenarioDirectory}/data/record_p-$var{Participant}_$core{date}-$core{time}.ov</Value>
 					<Modifiability>false</Modifiability>
 				</Setting>
 				<Setting>
