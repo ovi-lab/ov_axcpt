@@ -1,1 +1,1 @@
-from ._config import CONFIG
+from ._config import CONFIG, TempConfig
