@@ -4,6 +4,7 @@ import logging
 import os
 
 import mne
+import neurokit2 as nk
 import numpy as np
 import pandas as pd
 import yaml
@@ -108,6 +109,7 @@ class AXCPT:
                 preload=True
             )
             
+        # TODO: change dataChannels to always be read from config
         return cls(
             data={
                 "raw" : raw,
@@ -422,7 +424,7 @@ class AXCPT:
         
         return metadata, events_md, eventDict_md
     
-    def getClassifierData(self):
+    def getClassifierData(self, metrics: str|list[str] = "all"):
         with TempConfig(self.sessionConfigPath):
             alpha = CONFIG.alpha
             if not (alpha > 0 and alpha <= 0.5):
@@ -433,13 +435,14 @@ class AXCPT:
             
             metadata = self.data["epochs"].metadata.copy(deep=False)
             cData = pd.DataFrame(index=metadata.index)
+            cData["info", "epoch"] = cData.index
             
-            # Track which trials to select or drop
-            cData["select"] = True
+            # Track which epochs to select or drop
+            cData["info", "select"] = True
             
             # Get the average referenced (corrected) response times
             crt = "corrected_response_time"
-            cData[crt] = (
+            cData["info", crt] = (
                 metadata["response_time"] - metadata["response_time"].mean()
             )
             
@@ -449,15 +452,67 @@ class AXCPT:
             if alpha == 0.5:
                 q.pop(2)
                 labels.pop(1)
-            cData["label"] = pd.qcut(
-                cData[crt],
+            cData["info", "label"] = pd.qcut(
+                cData["info", crt],
                 q,
                 labels=labels,
                 precision=6
             )
             
-            # Drop any trials that are missing data
-            cData.loc[cData.isna().any(axis=1), "select"] = False
+            # Drop any epochs that are missing data
+            cData.loc[cData.isna().any(axis=1), [("info", "select")]] = False
+            
+            # Specify the metrics to calculate
+            _metrics = {
+                "ApEn" : nk.entropy_approximate,
+                "SampEn" : nk.entropy_sample,
+                "FE" : nk.entropy_fuzzy,
+                "MSE" : nk.entropy_multiscale,
+                "MFE" : nk.complexity_fuzzymse
+            }
+            if metrics != "all":
+                if isinstance(metrics, str):
+                    _metrics = {metrics : _metrics[metrics]}
+                else:
+                    _metrics = {m : _metrics[m] for m in list(metrics)}  
+                    
+            # Get the data and a mask of epochs and channels.
+            # Use units="uV" to get units of "V" as there is an issue where
+            # when loading data into mne, mne interprets data recorded by
+            # openvibe (recorded with units of V) as having units of mV and
+            # incorrectly scales it.
+            # Note: data.shape == numEpochs, numChannels, numTimepoints
+            data = self.data["epochs"].get_data(units="uV") 
+            chNames = self.data["epochs"].ch_names
+            epochMask = cData["info", "select"].to_list()
+            channelMask = [
+                (x in self.channelGroups["targetCH"])
+                for x in self.data["epochs"].ch_names
+            ]
+            mask = np.full(data.shape[:-1], False)
+            mask[np.ix_(epochMask, channelMask)] = True
+            
+            # Calculate the metrics
+            cData["info", "channel"] = [chNames] * len(cData)
+            for name, f in _metrics.items():
+                _log.info("Calculating Metric '%s'", name)
+                metric = np.full(mask.shape, np.nan)
+                metric[mask] = np.apply_along_axis(f, -1, data[mask])[...,0]
+                cData["features", name] = [*metric]
+                
+            # Explode and organise rows by epochs, then channels
+            cData.columns = ["/".join(s) for s in cData.columns.values]
+            cData = cData.explode(
+                ["info/channel", *[f"features/{x}" for x in _metrics]]
+            )
+            cData.columns = pd.MultiIndex.from_tuples(
+                [tuple(x.split("/")) for x in cData.columns.values]
+            )
+            cData.set_index(
+                [("info", x) for x in ["epoch", "channel"]],
+                inplace=True
+            )
+            cData.index.names = [x[-1] for x in cData.index.names] 
             
         return cData
     
