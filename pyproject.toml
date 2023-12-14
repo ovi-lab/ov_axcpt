@@ -15,6 +15,7 @@ mne = "^1.6.0"
 pyqt6 = "^6.6.1"
 pandas = "^2.1.4"
 neurokit2 = "^0.2.7"
+xgboost = "^2.0.2"
 
 
 [build-system]
