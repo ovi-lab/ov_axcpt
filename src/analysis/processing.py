@@ -128,12 +128,19 @@ class AXCPT:
             },
             sessionDir=sessionDir,
             sessionConfigPath=configPath,
-            channelGroups={
+        )  
+        
+    @property
+    def channelGroups(self):
+        with TempConfig(self.sessionConfigPath):
+            dataCH, nonDataCH, targetCH = cls.getChannelGroups(
+                self.data["raw"].ch_names
+            )
+            return {
                 "dataCH" : dataCH,
                 "nonDataCH" : nonDataCH,
                 "targetCH" : targetCH
             }
-        )      
 
     @classmethod
     def loadData(
