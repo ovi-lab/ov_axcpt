@@ -433,28 +433,35 @@ class AXCPT:
         
         return metadata, events_md, eventDict_md
     
-    def getClassifierData(self, metrics: str|list[str] = "all"):
-        labels = self.getClassifierLabels(includeCRT=True)
+    def getClassifierData(
+            self, 
+            metrics: str|list[str] = "all",
+            includeDropped: bool = False
+            ):
+        labels = self.getClassifierLabels(includeCRT=False)
         features = self.getClassifierFeatures(
             metrics=metrics, 
             epochMask=labels["select"],
             includeDropped=True,
             includeMask=False
             )
-        features.columns = pd.MultiIndex.from_product(
-            [["features"], features.columns]
+        
+        cData = features.unstack(level="channel")
+        cData.columns = pd.MultiIndex.from_product(
+            [["features"], ["/".join(s) for s in cData.columns.values]]
         )
-        labels.columns = pd.MultiIndex.from_product(
-            [["info"], labels.columns]
-        )
-        cData = labels.join(features)
+        cData.insert(0, "label", labels["label"])
+        
+        if not includeDropped:
+            for axis in (0, 1):
+                cData = cData.dropna(axis=axis, how="all")
             
         return cData
     
     def getClassifierLabels(
-        self,
-        includeCRT: bool = False
-        ):
+            self,
+            includeCRT: bool = False
+            ):
         with TempConfig(self.sessionConfigPath):
             alpha = CONFIG.alpha
             if not (alpha > 0 and alpha <= 0.5):
@@ -499,12 +506,12 @@ class AXCPT:
         return df
     
     def getClassifierFeatures(
-        self, 
-        metrics: str|list[str] = "all",
-        epochMask: pd.DataFrame|pd.Series|None = None,
-        includeDropped: bool = True,
-        includeMask: bool = False
-        ):
+            self, 
+            metrics: str|list[str] = "all",
+            epochMask: pd.DataFrame|pd.Series|None = None,
+            includeDropped: bool = True,
+            includeMask: bool = False
+            ):
         with TempConfig(self.sessionConfigPath):
             # Create a dataframe to store the features
             df = pd.DataFrame(index=self.data["epochs"].metadata.index)
