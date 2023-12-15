@@ -1,7 +1,9 @@
+import datetime
 import errno
 import glob
 import logging
 import os
+import time
 
 import mne
 import neurokit2 as nk
@@ -84,7 +86,7 @@ class AXCPT:
             # Get channel groups
             dataCH, nonDataCH, targetCH = cls.getChannelGroups(raw.ch_names)
             
-            # Apply necessary filtering
+            # Apply necessary filtering to all data channels
             applyFilters = CONFIG.apply_filters
             rawFiltered = raw.copy() if not applyFilters else cls.applyFilters(
                 raw, picks=dataCH, copy=True
@@ -128,12 +130,19 @@ class AXCPT:
             },
             sessionDir=sessionDir,
             sessionConfigPath=configPath,
-            channelGroups={
+        )  
+        
+    @property
+    def channelGroups(self):
+        with TempConfig(self.sessionConfigPath):
+            dataCH, nonDataCH, targetCH = self.getChannelGroups(
+                self.data["raw"].ch_names
+            )
+            return {
                 "dataCH" : dataCH,
                 "nonDataCH" : nonDataCH,
                 "targetCH" : targetCH
             }
-        )      
 
     @classmethod
     def loadData(
@@ -424,7 +433,33 @@ class AXCPT:
         
         return metadata, events_md, eventDict_md
     
-    def getClassifierData(self, metrics: str|list[str] = "all"):
+    def getClassifierData(
+            self, 
+            includeDropped: bool = False
+            ):
+        labels = self.getClassifierLabels(includeCRT=False)
+        features = self.getClassifierFeatures(
+            epochMask=labels["select"],
+            includeDropped=True,
+            includeMask=False
+            )
+        
+        cData = features.unstack(level="channel")
+        cData.columns = pd.MultiIndex.from_product(
+            [["features"], ["/".join(s) for s in cData.columns.values]]
+        )
+        cData.insert(0, "label", labels["label"])
+        
+        if not includeDropped:
+            for axis in (0, 1):
+                cData = cData.dropna(axis=axis, how="all")
+            
+        return cData
+    
+    def getClassifierLabels(
+            self,
+            includeCRT: bool = False
+            ):
         with TempConfig(self.sessionConfigPath):
             alpha = CONFIG.alpha
             if not (alpha > 0 and alpha <= 0.5):
@@ -432,35 +467,86 @@ class AXCPT:
                     "Config value `alpha` must be in range (0, 0.5], but " +
                     f"got {alpha}"
                 )
-            
-            metadata = self.data["epochs"].metadata.copy(deep=False)
-            cData = pd.DataFrame(index=metadata.index)
-            cData["info", "epoch"] = cData.index
+                
+            metadata = self.data["epochs"].metadata
+            df = pd.DataFrame(index=metadata.index)
+            df["epoch"] = df.index
             
             # Track which epochs to select or drop
-            cData["info", "select"] = True
+            df["select"] = True
             
             # Get the average referenced (corrected) response times
             crt = "corrected_response_time"
-            cData["info", crt] = (
+            df[crt] = (
                 metadata["response_time"] - metadata["response_time"].mean()
             )
             
             # Label the attention state
-            q = [0., alpha, 1. - alpha, 1.]
+            quantiles = [0., alpha, 1. - alpha, 1.]
             labels = ["high", "medium", "low"]
             if alpha == 0.5:
-                q.pop(2)
+                quantiles.pop(2)
                 labels.pop(1)
-            cData["info", "label"] = pd.qcut(
-                cData["info", crt],
-                q,
+            df["label"] = pd.qcut(
+                df[crt],
+                quantiles,
                 labels=labels,
-                precision=6
+                precision=12
             )
             
             # Drop any epochs that are missing data
-            cData.loc[cData.isna().any(axis=1), [("info", "select")]] = False
+            df.loc[df.isna().any(axis=1), [("select")]] = False
+            
+            if not includeCRT:
+                df = df.drop("corrected_response_time", axis=1)
+            df.set_index("epoch", inplace=True)
+            
+        return df
+    
+    def getClassifierFeatures(
+            self, 
+            epochMask: pd.DataFrame|pd.Series|None = None,
+            includeDropped: bool = True,
+            includeMask: bool = False
+            ):
+        with TempConfig(self.sessionConfigPath):
+            # Create a dataframe to store the features
+            df = pd.DataFrame(index=self.data["epochs"].metadata.index)
+            df["epoch"] = df.index
+            df["channel"] = len(df) * [self.data["epochs"].ch_names]
+            
+            # Specify the epochs and channels to calculate features for
+            if not df.index.equals(epochMask.index):
+                raise ValueError(
+                    "`epochMask` must have the same index as the metadata " +
+                    "of the epochs data"
+                )
+            elif epochMask is None:
+                df["epoch_mask"] = True
+            else:
+                _epochMask = epochMask 
+                if isinstance(epochMask, pd.DataFrame):
+                    _epochMask = epochMask["epochMask"]
+                df.insert(len(df.columns), "epoch_mask", _epochMask)
+            df["channel_mask"] = len(df) * [
+                [
+                    (x in self.channelGroups["targetCH"])
+                    for x in self.data["epochs"].ch_names
+                ]
+            ]
+            
+            # Get the data
+            # Use units="uV" to get units of "V" as there is an issue where
+            # when loading data into mne, mne interprets data recorded by
+            # openvibe (recorded with units of V) as having units of mV and
+            # incorrectly scales it.
+            df["data"] = [*self.data["epochs"].get_data(units="uV")]
+            
+            # Explode and organise rows by epoch, then channel
+            df = df.explode(["channel", "channel_mask", "data"])
+            df = df.set_index(["epoch", "channel"])
+            df["mask"] = df[["epoch_mask", "channel_mask"]].all(axis=1)
+            df = df.drop(["epoch_mask", "channel_mask"], axis=1)
             
             # Specify the metrics to calculate
             _metrics = {
@@ -470,51 +556,38 @@ class AXCPT:
                 "MSE" : nk.entropy_multiscale,
                 "MFE" : nk.complexity_fuzzymse
             }
+            metrics = CONFIG.metrics
             if metrics != "all":
                 if isinstance(metrics, str):
                     _metrics = {metrics : _metrics[metrics]}
                 else:
                     _metrics = {m : _metrics[m] for m in list(metrics)}  
                     
-            # Get the data and a mask of epochs and channels.
-            # Use units="uV" to get units of "V" as there is an issue where
-            # when loading data into mne, mne interprets data recorded by
-            # openvibe (recorded with units of V) as having units of mV and
-            # incorrectly scales it.
-            # Note: data.shape == numEpochs, numChannels, numTimepoints
-            data = self.data["epochs"].get_data(units="uV") 
-            chNames = self.data["epochs"].ch_names
-            epochMask = cData["info", "select"].to_list()
-            channelMask = [
-                (x in self.channelGroups["targetCH"])
-                for x in self.data["epochs"].ch_names
-            ]
-            mask = np.full(data.shape[:-1], False)
-            mask[np.ix_(epochMask, channelMask)] = True
+            # Get the data and mask as numpy arrays
+            data = np.stack(df["data"].to_numpy())
+            mask = np.stack(df["mask"].to_numpy())
             
             # Calculate the metrics
-            cData["info", "channel"] = [chNames] * len(cData)
             for name, f in _metrics.items():
                 _log.info("Calculating Metric '%s'", name)
+                t0 = time.monotonic()
                 metric = np.full(mask.shape, np.nan)
                 metric[mask] = np.apply_along_axis(f, -1, data[mask])[...,0]
-                cData["features", name] = [*metric]
+                df[name] = [*metric]
+                _log.debug(
+                    "Done calculating metric '%s'. Approximate time taken: %s",
+                    name,
+                    str(datetime.timedelta(seconds=(time.monotonic() - t0)))
+                    )
                 
-            # Explode and organise rows by epochs, then channels
-            cData.columns = ["/".join(s) for s in cData.columns.values]
-            cData = cData.explode(
-                ["info/channel", *[f"features/{x}" for x in _metrics]]
-            )
-            cData.columns = pd.MultiIndex.from_tuples(
-                [tuple(x.split("/")) for x in cData.columns.values]
-            )
-            cData.set_index(
-                [("info", x) for x in ["epoch", "channel"]],
-                inplace=True
-            )
-            cData.index.names = [x[-1] for x in cData.index.names] 
+            df = df.drop("data", axis=1)
+            if not includeMask:
+                df = df.drop("mask", axis=1)
+            if not includeDropped:
+                for axis in (0, 1):
+                    df = df.dropna(axis=axis, how="all")
             
-        return cData
+        return df
     
     def trainClassifier(self, features):
         pass

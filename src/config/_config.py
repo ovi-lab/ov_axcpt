@@ -109,6 +109,7 @@ CONFIG = _Config()
 # undefined if CONFIG.PATH already contains the specified config file, or if it
 # added/removed while in this context manager
 class TempConfig:
+    # TODO: make safe to add the same temp config multiple times
     def __init__(self, path):
         self._path = path
     

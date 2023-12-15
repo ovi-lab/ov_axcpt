@@ -47,4 +47,5 @@ h_freq: 100
 epoch_tmin: -0.5
 epoch_tmax: 1
 
-alpha: # must be in range (0,0.5]
+alpha: 0.25 # must be in range (0,0.5]
+metrics: [] # must be "all" or string or list of string. See AXCPT.getClassifierFeatures for valid values
