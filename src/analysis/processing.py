@@ -4,7 +4,9 @@ import glob
 import logging
 import os
 import time
+import warnings
 
+from deepdiff import DeepDiff
 import mne
 import neurokit2 as nk
 import numpy as np
@@ -130,6 +132,7 @@ class AXCPT:
             },
             sessionDir=sessionDir,
             sessionConfigPath=configPath,
+            rawDataPath=dataPath
         )  
         
     @property
@@ -516,13 +519,13 @@ class AXCPT:
             df["channel"] = len(df) * [self.data["epochs"].ch_names]
             
             # Specify the epochs and channels to calculate features for
-            if not df.index.equals(epochMask.index):
+            if epochMask is None:
+                df["epoch_mask"] = True
+            elif not df.index.equals(epochMask.index):
                 raise ValueError(
                     "`epochMask` must have the same index as the metadata " +
                     "of the epochs data"
                 )
-            elif epochMask is None:
-                df["epoch_mask"] = True
             else:
                 _epochMask = epochMask 
                 if isinstance(epochMask, pd.DataFrame):
@@ -534,6 +537,17 @@ class AXCPT:
                     for x in self.data["epochs"].ch_names
                 ]
             ]
+            numSelected = {
+                "epochs" : df["epoch_mask"].sum(),
+                "channels" : df.at[0, "channel_mask"].count(True)
+            }
+            _log.info(
+                "Getting features for %s", 
+                ", ".join([f"{v} {k}" for (k, v) in numSelected.items()])
+            )
+            for k, v in numSelected.items():
+                if v == 0:
+                    warnings.warn(f"Getting features for 0 {k}")
             
             # Get the data
             # Use units="uV" to get units of "V" as there is an issue where
@@ -561,24 +575,118 @@ class AXCPT:
                 if isinstance(metrics, str):
                     _metrics = {metrics : _metrics[metrics]}
                 else:
-                    _metrics = {m : _metrics[m] for m in list(metrics)}  
+                    _metrics = {m : _metrics[m] for m in list(metrics)}
                     
-            # Get the data and mask as numpy arrays
-            data = np.stack(df["data"].to_numpy())
-            mask = np.stack(df["mask"].to_numpy())
+            # Check whether any features have already been saved for the
+            # current set of config values
+            configSS = CONFIG.snapshot()
+            excludedConfigVals = [
+                "metrics", 
+                "target_channels", 
+                "non_data_channels", 
+                "raw_data_path"
+            ]
+            for k in excludedConfigVals:
+                configSS.pop(k)
+            configSS["dataFilePath"] = self.rawDataPath
+            cacheDir = os.path.join(
+                self.sessionDir, "analysis", "feature_cache"
+            )
+            # Find the saved feature config that matches the current config
+            n = 3
+            maxID = 0
+            targetPath = f"{cacheDir}/features_config_{'[0-9]' * n}.yaml"
+            for featuresConfigPath in glob.iglob(targetPath):
+                id = int(featuresConfigPath.rstrip(".yaml")[(-1 * n):])
+                maxID = max(maxID, id)
+                with open(featuresConfigPath, "r") as f:
+                    if len(DeepDiff(configSS, yaml.safe_load(f))) == 0:
+                        # Check if cached features dataframe has desired index
+                        featuresPath = os.path.join(
+                            cacheDir, (f"features_%0{n}i.csv") % id
+                        )
+                        cachedFeatures = pd.read_csv(
+                            featuresPath, index_col=df.index.names
+                        )
+                        if cachedFeatures.index.equals(df.index):
+                            break        
+            else:
+                # Create new files for saving the features
+                id = maxID + 1
+                os.makedirs(cacheDir, exist_ok=True)
+        
+                # Save the modified copy of the config values. Assume these
+                # values uniquely identify the epochs data and corresponding
+                # features
+                featuresConfigPath = os.path.join(
+                    cacheDir, (f"features_config_%0{n}i.yaml") % id
+                )
+                with open(featuresConfigPath, "x") as f:
+                    yaml.dump(configSS, f)
             
-            # Calculate the metrics
+                # Save the empty features dataframe
+                featuresPath = os.path.join(
+                    cacheDir, (f"features_%0{n}i.csv") % id
+                )
+                pd.DataFrame(index=df.index).to_csv(featuresPath, mode="x")
+            
+            # Calculate the metrics, reading from the cached features as 
+            # necessary.
+            # Note: df and cachedFeatures are guaranteed to have the same index
+            # TODO: use sparse data structures
+            # TODO: only load cachedFeatures when necessary and only specific columns
+            data = np.stack(df["data"].to_numpy())
+            cachedFeatures = pd.read_csv(
+                featuresPath, index_col=df.index.names
+            )
             for name, f in _metrics.items():
-                _log.info("Calculating Metric '%s'", name)
+                _log.info("Getting metric '%s'", name)
                 t0 = time.monotonic()
-                metric = np.full(mask.shape, np.nan)
-                metric[mask] = np.apply_along_axis(f, -1, data[mask])[...,0]
-                df[name] = [*metric]
+                
+                # Get cached values for this metric
+                df[name] = np.nan
+                if name in cachedFeatures.columns.values:
+                    df.loc[df["mask"], name] = cachedFeatures.loc[
+                        df["mask"], name
+                    ]
+                else:
+                    cachedFeatures[name] = np.nan
                 _log.debug(
-                    "Done calculating metric '%s'. Approximate time taken: %s",
+                    "Loaded %i of %i items from cache for metric '%s'",
+                    df[name].notna().sum(),
+                    df["mask"].sum(),
+                    name
+                )
+                
+                # Calculate non-cached values for this metric
+                if df[name].notna().sum() < df["mask"].sum():
+                    mask = np.stack(
+                        (df["mask"] & df[name].isna()).to_numpy()
+                    )
+                    metric = np.stack(df[name].to_numpy())
+                    metric[mask] = np.apply_along_axis(
+                        (lambda x : f(x)[0]), -1, data[mask]
+                    )
+                    df[name] = metric
+                    _log.debug(
+                        "Calculated %i of %i items for metric '%s'",
+                        np.count_nonzero(mask),
+                        df["mask"].sum(),
+                        name
+                    )
+                    
+                _log.debug(
+                    "Done getting metric '%s'. Approximate time taken: %s",
                     name,
                     str(datetime.timedelta(seconds=(time.monotonic() - t0)))
                     )
+                    
+            # Update the saved cache if necessary
+            names = [*_metrics]
+            idx = cachedFeatures[names].isna() & df[names].notna() # TODO: make sure this actually updates vals correctly
+            if idx.any(axis=None):
+                cachedFeatures[idx] = df[idx]
+                cachedFeatures.to_csv(featuresPath, mode="w")
                 
             df = df.drop("data", axis=1)
             if not includeMask:

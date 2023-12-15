@@ -4,7 +4,7 @@ if not _logging.getLogger(__name__).hasHandlers():
     _logger = _logging.getLogger(__name__)
     _handler = _logging.StreamHandler()
     _formatter = _logging.Formatter(
-        "%(levelname)-8s : %(name)-16s : %(message)-s"
+        "%(levelname)-8s :: %(name)-16s :: %(message)-s"
         )
     
     _logger.setLevel(_logging.DEBUG)

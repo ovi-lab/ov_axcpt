@@ -16,6 +16,7 @@ pyqt6 = "^6.6.1"
 pandas = "^2.1.4"
 neurokit2 = "^0.2.7"
 xgboost = "^2.0.2"
+deepdiff = "^6.7.1"
 
 
 [build-system]
