@@ -3,10 +3,18 @@ stimcodes = {
     experiment_stop=OVTK_StimulationId_ExperimentStop,
     trial_start=OVTK_StimulationId_TrialStart,
     trial_stop=OVTK_StimulationId_TrialStop,
+    baseline_start=OVTK_StimulationId_BaselineStart,
+    baseline_stop=OVTK_StimulationId_BaselineStop,
     fixation_cross=OVTK_GDF_Cross_On_Screen,
     clear_screen=OVTK_StimulationId_VisualStimulationStop,
     instructions={
-        OVTK_StimulationId_Label_A0
+        set_0={
+            OVTK_StimulationId_Label_A0,
+            OVTK_StimulationId_Label_A1
+        },
+        set_1={
+            OVTK_StimulationId_Label_B0
+        }
     },
     alphabet={
         A=OVTK_StimulationId_Label_01,

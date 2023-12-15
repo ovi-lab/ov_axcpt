@@ -8,7 +8,7 @@
 			<TypeIdentifier>(0x79a9edeb, 0x245d83fc)</TypeIdentifier>
 			<Name>Participant</Name>
 			<DefaultValue>0</DefaultValue>
-			<Value>1</Value>
+			<Value>3</Value>
 		</Setting>
 	</Settings>
 	<Inputs></Inputs>
@@ -719,6 +719,36 @@
 					<Value>OVTK_StimulationId_Label_28</Value>
 					<Modifiability>false</Modifiability>
 				</Setting>
+				<Setting>
+					<Identifier>(0x376c6d2d, 0xfdd4e8ce)</Identifier>
+					<TypeIdentifier>(0x330306dd, 0x74a95f98)</TypeIdentifier>
+					<Name>Cue Image 29</Name>
+					<DefaultValue>${Path_Data}/plugins/simple-visualization/p300-magic-card/29.png</DefaultValue>
+					<Value>${Path_Data}/plugins/simple-visualization/p300-magic-card/29.png</Value>
+					<Modifiability>false</Modifiability>
+				</Setting>
+				<Setting>
+					<TypeIdentifier>(0x2c132d6e, 0x44ab0d97)</TypeIdentifier>
+					<Name>Stimulation 29</Name>
+					<DefaultValue>OVTK_StimulationId_Label_29</DefaultValue>
+					<Value>OVTK_StimulationId_Label_29</Value>
+					<Modifiability>false</Modifiability>
+				</Setting>
+				<Setting>
+					<Identifier>(0x0233aa6e, 0xd856b60a)</Identifier>
+					<TypeIdentifier>(0x330306dd, 0x74a95f98)</TypeIdentifier>
+					<Name>Cue Image 30</Name>
+					<DefaultValue>${Path_Data}/plugins/simple-visualization/p300-magic-card/30.png</DefaultValue>
+					<Value>${Path_Data}/plugins/simple-visualization/p300-magic-card/30.png</Value>
+					<Modifiability>false</Modifiability>
+				</Setting>
+				<Setting>
+					<TypeIdentifier>(0x2c132d6e, 0x44ab0d97)</TypeIdentifier>
+					<Name>Stimulation 30</Name>
+					<DefaultValue>OVTK_StimulationId_Label_30</DefaultValue>
+					<Value>OVTK_StimulationId_Label_30</Value>
+					<Modifiability>false</Modifiability>
+				</Setting>
 			</Settings>
 			<Attributes>
 				<Attribute>
@@ -942,6 +972,17 @@
 			</Target>
 		</Link>
 		<Link>
+			<Identifier>(0x0000427b, 0x00005dc6)</Identifier>
+			<Source>
+				<BoxIdentifier>(0x00001228, 0x000060f8)</BoxIdentifier>
+				<BoxOutputIndex>0</BoxOutputIndex>
+			</Source>
+			<Target>
+				<BoxIdentifier>(0x00003498, 0x000076e2)</BoxIdentifier>
+				<BoxInputIndex>0</BoxInputIndex>
+			</Target>
+		</Link>
+		<Link>
 			<Identifier>(0x00004366, 0x0000219d)</Identifier>
 			<Source>
 				<BoxIdentifier>(0x0000130a, 0x00001bb7)</BoxIdentifier>
@@ -961,17 +1002,6 @@
 			<Target>
 				<BoxIdentifier>(0x00001ab3, 0x000040ad)</BoxIdentifier>
 				<BoxInputIdentifier>(0xfc875ec7, 0x619d10f7)</BoxInputIdentifier>
-			</Target>
-		</Link>
-		<Link>
-			<Identifier>(0x00006152, 0x000014c2)</Identifier>
-			<Source>
-				<BoxIdentifier>(0x0000130a, 0x00001bb7)</BoxIdentifier>
-				<BoxOutputIndex>2</BoxOutputIndex>
-			</Source>
-			<Target>
-				<BoxIdentifier>(0x00003498, 0x000076e2)</BoxIdentifier>
-				<BoxInputIndex>0</BoxInputIndex>
 			</Target>
 		</Link>
 		<Link>

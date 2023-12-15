@@ -9,7 +9,8 @@ function initialize(box)
         ISI=0.250, --s
         ITI={1.500, 2.000, 2.500}, --s, these are the set of possible ITIs
         cueStim=0.250, --s
-        probeStim=0.250 --s
+        probeStim=0.250, --s
+        baseline=5 --s
     }
 
     -- Create the list of trials
@@ -55,13 +56,27 @@ function process(box)
     -- Start the experiment
     box:send_stimulation(1, stimcodes.experiment_start, t, 0)
 
-    -- Display the instructions
-    for k, stim in ipairs(stimcodes.instructions) do
+    -- Display the first set of instructions
+    for k, stim in ipairs(stimcodes.instructions.set_0) do
+        box:send_stimulation(1, stim, t, 0)
+        t = wait_for_continue(box)
+    end
+
+    -- Collect baseline
+    t = t + 0.2
+    box:send_stimulation(1, stimcodes.fixation_cross, t, 0)
+    box:send_stimulation(1, stimcodes.baseline_start, t, 0)
+    t = wait_for(box, durations.baseline + 1)
+    box:send_stimulation(1, stimcodes.baseline_stop, t, 0)
+
+    -- Display the second set of instructions
+    for k, stim in ipairs(stimcodes.instructions.set_1) do
         box:send_stimulation(1, stim, t, 0)
         t = wait_for_continue(box)
     end
 
     -- Iterate through trials
+    t = t + 0.2
     for k_t, trial in ipairs(trials) do
         -- Assume that at start of loop, `t` is the time of the start of 
         -- the trial
@@ -104,9 +119,6 @@ function wait_for_continue(box)
         -- specify the stimulation that implies to stop waiting
         local target_stimulation = OVTK_StimulationId_Number_1B
 
-        -- get current simulated time
-        local t = box:get_current_time()
-
         -- loop through all inputs of the box
         for input = 1, box:get_input_count() do
             
@@ -119,7 +131,7 @@ function wait_for_continue(box)
 
                 -- return the time if the target stimulation is was received
                 if identifier == target_stimulation then
-                    return t
+                    return box:get_current_time()
                 end
 
             end
@@ -146,6 +158,26 @@ function shuffle_arr(arr)
     end
 
     return s
+end
+
+function wait_for(box, duration)
+    local t0 = box:get_current_time()
+
+    -- loop until box:keep_processing() returns zero
+	-- cpu will be released with a call to sleep
+	-- at the end of the loop
+    while box:keep_processing() do
+        -- Get the current time
+        local t = box:get_current_time()
+
+        -- Return the time after waiting for the specified duration
+        if t - t0 >= duration then
+            return t
+        end
+
+        -- release cpu
+        box:sleep()
+    end
 end
 
 function wait_until(box, time)  

@@ -6,8 +6,12 @@
     <SettingValue>${Player_ScenarioDirectory}/assets/fixation_cross.png</SettingValue>
 	<SettingValue>OVTK_GDF_Cross_On_Screen</SettingValue>
 
-    <SettingValue>${Player_ScenarioDirectory}/assets/instructions.png</SettingValue>
+    <SettingValue>${Player_ScenarioDirectory}/assets/instructions_s0_0.png</SettingValue>
 	<SettingValue>OVTK_StimulationId_Label_A0</SettingValue>
+    <SettingValue>${Player_ScenarioDirectory}/assets/instructions_s0_1.png</SettingValue>
+	<SettingValue>OVTK_StimulationId_Label_A1</SettingValue>
+    <SettingValue>${Player_ScenarioDirectory}/assets/instructions_s1_0.png</SettingValue>
+	<SettingValue>OVTK_StimulationId_Label_B0</SettingValue>
 
     <SettingValue>${Player_ScenarioDirectory}/assets/A.png</SettingValue>
 	<SettingValue>OVTK_StimulationId_Label_01</SettingValue>

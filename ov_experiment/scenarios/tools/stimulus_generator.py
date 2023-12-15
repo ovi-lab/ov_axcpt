@@ -56,14 +56,44 @@ def makeLetterStims(dirName, **kwargs):
         filePath = os.path.abspath(os.path.join(dirName, s + ".png"))
         makeTextStim(s, filePath, **kwargs)
         
-def makeInstructions(filePath, **kwargs):
+def makeInstructions(dirName, **kwargs):
     instructions = [
         "Hello",
         "\n",
         "This is the instruction page :)",
         "Press the space bar to continue"
     ]
-    makeTextStim(instructions, filePath, **kwargs)
+    instructions = [
+        [
+            [
+                "Hello",
+                "\n",
+                "This is the instruction page :)",
+                "Press the space bar to continue"
+            ],
+            [
+                "We will now collect a three minute baseline.",
+                "\n",
+                "You will be shown an image of a cross. For the duration",
+                "of the baseline recording, please stay fixated on this",
+                "cross and try to keep your eyes open and minimize movement.",
+                "\n",
+                "Press the space bar to start the baseline recording."
+            ]
+        ],
+        [
+            [
+                "You have completed the baseline recording.",
+                "\n",
+                "Press the spacebar to begin the trials."
+            ]
+        ]
+    ]
+    
+    for ks, instructionSet in enumerate(instructions):
+        for ki, instruction in enumerate(instructionSet):
+            filePath = os.path.join(dirName, f"instructions_s{ks}_{ki}.png")
+            makeTextStim(instruction, filePath, **kwargs)    
     
 def makeFixationCross(filePath, size=(100,100), imgSize=(1536,1024), **kwargs):
     # Create the image
@@ -103,9 +133,8 @@ def main(letter_kwargs={}, instructions_kwargs={}, cross_kwargs={}, **kwargs):
     letter_kwargs.update(kwargs)
     makeLetterStims(fileDir, **letter_kwargs)
     
-    filePath = os.path.join(fileDir, "instructions.png")
     instructions_kwargs.update(kwargs)
-    makeInstructions(filePath, **instructions_kwargs)
+    makeInstructions(fileDir, **instructions_kwargs)
     
     filePath = os.path.join(fileDir, "fixation_cross.png")
     cross_kwargs.update(kwargs)

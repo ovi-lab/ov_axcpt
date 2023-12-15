@@ -30,6 +30,7 @@ durations: # All in seconds
     - 2.500
   cue_stimulus: 0.250
   probe_stimulus: 0.250
+  baseline: 180
 
 # Analysis Parameters
 

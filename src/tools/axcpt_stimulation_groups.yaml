@@ -3,7 +3,11 @@ visual:
     onset:
       fixation_cross: OVTK_GDF_Cross_On_Screen
       instruction:
-        instruction_1: OVTK_StimulationId_Label_A0
+        set_0:
+          instruction_0: OVTK_StimulationId_Label_A0
+          instruction_1: OVTK_StimulationId_Label_A1
+        set_1:
+          instruction_0: OVTK_StimulationId_Label_B0
       stimulus:
         A: OVTK_StimulationId_Label_01
         B: OVTK_StimulationId_Label_02
@@ -47,3 +51,6 @@ timing:
   trial:
     start: OVTK_StimulationId_TrialStart
     stop: OVTK_StimulationId_TrialStop
+  baseline:
+    start: OVTK_StimulationId_BaselineStart
+    stop: OVTK_StimulationId_BaselineStop
