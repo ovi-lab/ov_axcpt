@@ -94,7 +94,17 @@ class AXCPT:
             
             # Get events with meaningful names
             events, eventDict = cls.getEvents(rawFiltered)
-            
+
+            time_per_sample = (1/500)
+
+            index = np.argwhere(events == 1)[0][0]
+
+            time_taken = events[index, 0] * time_per_sample
+
+            rawFiltered = rawFiltered.crop(tmin=time_taken)
+
+            events, eventDict = cls.getEvents(rawFiltered)
+                        
             # Extract the metadata and corresponding events and event IDs
             metadata, events_md, eventDict_md = cls.getMetadata(
                 events, eventDict, rawFiltered.info["sfreq"]
