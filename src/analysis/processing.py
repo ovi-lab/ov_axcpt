@@ -435,12 +435,10 @@ class AXCPT:
     
     def getClassifierData(
             self, 
-            metrics: str|list[str] = "all",
             includeDropped: bool = False
             ):
         labels = self.getClassifierLabels(includeCRT=False)
         features = self.getClassifierFeatures(
-            metrics=metrics, 
             epochMask=labels["select"],
             includeDropped=True,
             includeMask=False
@@ -507,7 +505,6 @@ class AXCPT:
     
     def getClassifierFeatures(
             self, 
-            metrics: str|list[str] = "all",
             epochMask: pd.DataFrame|pd.Series|None = None,
             includeDropped: bool = True,
             includeMask: bool = False
@@ -559,6 +556,7 @@ class AXCPT:
                 "MSE" : nk.entropy_multiscale,
                 "MFE" : nk.complexity_fuzzymse
             }
+            metrics = CONFIG.metrics
             if metrics != "all":
                 if isinstance(metrics, str):
                     _metrics = {metrics : _metrics[metrics]}
