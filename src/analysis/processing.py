@@ -95,7 +95,7 @@ class AXCPT:
             # Get events with meaningful names
             events, eventDict = cls.getEvents(rawFiltered)
 
-            time_per_sample = (1/500)
+            time_per_sample = (1/raw.info["sfreq"])
 
             index = np.argwhere(events == 1)[0][0]
 
