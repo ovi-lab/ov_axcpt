@@ -81,21 +81,37 @@ class AXCPT:
             _kwargs = kwargs.copy()
             _kwargs.pop("path", None)
             raw, dataPath = cls.loadData(path=dataPath, **_kwargs)
+                        
+            # Get channel groups
+            dataCH, nonDataCH, targetCH = cls.getChannelGroups(raw.ch_names)
+            
+            # Get events with meaningful names
+            events, eventDict = cls.getEvents(raw)
+            
+            # Get the baseline
+            noBaseline = not any(
+                x.startswith("timing/baseline") for x in eventDict
+            )
+            blRaw = None if noBaseline else cls.extractBaseline(
+                raw, events, eventDict, copy=True
+            )
+                
+            # Apply any further processing to the raw data (+ baseline) here,
+            # making sure not to modify the data in place. The raw data and
+            # baseline must given to the AXCPT constructor unmodified.
             
             # Rename channels if necessary
             # TODO: implement
             
-            # Get channel groups
-            dataCH, nonDataCH, targetCH = cls.getChannelGroups(raw.ch_names)
-            
             # Apply necessary filtering to all data channels
-            applyFilters = CONFIG.apply_filters
-            rawFiltered = raw.copy() if not applyFilters else cls.applyFilters(
-                raw, picks=dataCH, copy=True
-            )
-            
-            # Get events with meaningful names
-            events, eventDict = cls.getEvents(rawFiltered)
+            if CONFIG.apply_filters:
+                rawFiltered = cls.applyFilters(raw, picks=dataCH, copy=True)
+                blFiltered = None if noBaseline else cls.extractBaseline(
+                    rawFiltered, events, eventDict, copy=True
+                )
+            else:
+                rawFiltered = raw.copy()
+                blFiltered = None if noBaseline else blRaw.copy()
             
             # Extract the metadata and corresponding events and event IDs
             metadata, events_md, eventDict_md = cls.getMetadata(
@@ -111,6 +127,10 @@ class AXCPT:
                 tmax=CONFIG.epoch_tmax,
                 metadata=metadata,
                 preload=True
+            )
+            blEpochs = None if noBaseline else mne.make_fixed_length_epochs(
+                blFiltered,
+                duration=(CONFIG.epoch_tmax - CONFIG.epoch_tmin)
             )
             
         # TODO: change dataChannels to always be read from config
@@ -129,6 +149,11 @@ class AXCPT:
                 "raw" : eventDict,
                 "rawProcessed" : eventDict,
                 "epochs" : eventDict_md
+            },
+            baseline={
+                "raw" : blRaw,
+                "rawProcessed" : blFiltered,
+                "epochs" : blEpochs
             },
             sessionDir=sessionDir,
             sessionConfigPath=configPath,
@@ -222,7 +247,7 @@ class AXCPT:
             if len(matchingPaths) == 0:
                 raise RuntimeError(
                     f"No data (filetype = {dataFormat}) found in directory " +
-                    f"'{data_dir}'" +
+                    f"'{_path}'" +
                     (" or subdirectories" if checkSubdirs else "")
                 )
             dataPath = max(matchingPaths, key=os.path.getctime)
@@ -263,6 +288,28 @@ class AXCPT:
             targetCH = dataCH    
             
         return dataCH, nonDataCH, targetCH
+    
+    @classmethod
+    def extractBaseline(
+            cls,
+            raw: mne.io.BaseRaw,
+            events,
+            eventDict,
+            copy: bool = True
+            ) -> mne.io.BaseRaw:
+        
+        _raw = raw.copy() if copy else raw
+        
+        tRange = []
+        for event in ("start", "stop"):
+            eventNames = mne.event.match_event_names(
+                eventDict, "timing/baseline/" + event
+            )
+            eventName = eventNames[0]
+            tRange.append(events[events[:,2] == eventDict[eventName]][0,0])
+            tRange[-1] = tRange[-1] / raw.info["sfreq"]
+        
+        return _raw.crop(tmin=tRange[0], tmax=tRange[1], include_tmax=True)
     
     @classmethod
     def applyFilters(
@@ -518,7 +565,7 @@ class AXCPT:
             df["epoch"] = df.index
             df["channel"] = len(df) * [self.data["epochs"].ch_names]
             
-            # Specify the epochs and channels to calculate features for
+            # Specify which epochs to calculate features for
             if epochMask is None:
                 df["epoch_mask"] = True
             elif not df.index.equals(epochMask.index):
@@ -531,12 +578,14 @@ class AXCPT:
                 if isinstance(epochMask, pd.DataFrame):
                     _epochMask = epochMask["epochMask"]
                 df.insert(len(df.columns), "epoch_mask", _epochMask)
-            df["channel_mask"] = len(df) * [
-                [
-                    (x in self.channelGroups["targetCH"])
-                    for x in self.data["epochs"].ch_names
-                ]
+            # Specify which channels to calculate features for
+            channelMask = [
+                (x in self.channelGroups["targetCH"])
+                for x in self.data["epochs"].ch_names
             ]
+            df["channel_mask"] = len(df) * [channelMask]
+            # Report the number of channels and epochs that features will be
+            # calculated for
             numSelected = {
                 "epochs" : df["epoch_mask"].sum(),
                 "channels" : df.at[0, "channel_mask"].count(True)
@@ -587,7 +636,7 @@ class AXCPT:
                 "raw_data_path"
             ]
             for k in excludedConfigVals:
-                configSS.pop(k)
+                configSS.pop(k, None)
             configSS["dataFilePath"] = self.rawDataPath
             cacheDir = os.path.join(
                 self.sessionDir, "analysis", "feature_cache"
@@ -633,8 +682,6 @@ class AXCPT:
             # Calculate the metrics, reading from the cached features as 
             # necessary.
             # Note: df and cachedFeatures are guaranteed to have the same index
-            # TODO: use sparse data structures
-            # TODO: only load cachedFeatures when necessary and only specific columns
             data = np.stack(df["data"].to_numpy())
             cachedFeatures = pd.read_csv(
                 featuresPath, index_col=df.index.names
@@ -682,12 +729,14 @@ class AXCPT:
                     )
                     
             # Update the saved cache if necessary
+            # TODO: maybe do this more often, like after every metric calculated?
             names = [*_metrics]
             idx = cachedFeatures[names].isna() & df[names].notna() # TODO: make sure this actually updates vals correctly
             if idx.any(axis=None):
                 cachedFeatures[idx] = df[idx]
                 cachedFeatures.to_csv(featuresPath, mode="w")
-                
+              
+            # Clean up the dataframe  
             df = df.drop("data", axis=1)
             if not includeMask:
                 df = df.drop("mask", axis=1)
