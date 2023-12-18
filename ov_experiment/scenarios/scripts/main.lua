@@ -10,7 +10,7 @@ function initialize(box)
         ITI={1.500, 2.000, 2.500}, --s, these are the set of possible ITIs
         cueStim=0.250, --s
         probeStim=0.250, --s
-        baseline=5 --s
+        baseline=180 --s
     }
 
     -- Create the list of trials
