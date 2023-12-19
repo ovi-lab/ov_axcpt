@@ -9,11 +9,12 @@ PATH:
 
 # General
 
-data_dir: ov_experiment\scenarios\data
+data_dir: ov_experiment/scenarios/data
 data_format: gdf
 
-ov_stim_list_path: src\tools\stimulation_list.txt
-axcpt_stim_groups_path: src\tools\axcpt_stimulation_groups.yaml
+ov_stim_list_path: src/tools/stimulation_list.txt
+axcpt_stim_groups_path: src/tools/axcpt_stimulation_groups.yaml
+eego_electrode_map_path: src/tools/eego_electrode_map.txt
 
 # Openvibe Scenario
 

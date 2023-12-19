@@ -82,9 +82,6 @@ class AXCPT:
             _kwargs = kwargs.copy()
             _kwargs.pop("path", None)
             raw, dataPath = cls.loadData(path=dataPath, **_kwargs)
-                        
-            # Get channel groups
-            dataCH, nonDataCH, targetCH = cls.getChannelGroups(raw.ch_names)
             
             # Get events with meaningful names
             events, eventDict = cls.getEvents(raw)
@@ -102,17 +99,31 @@ class AXCPT:
             # baseline must given to the AXCPT constructor unmodified.
             
             # Rename channels if necessary
-            # TODO: implement
+            if raw.ch_names[0] == "Channel 1":
+                rawRenamed = cls.renameChannels(raw, copy=True)
+                blRenamed = None if noBaseline else cls.renameChannels(
+                    blRaw, copy=True
+                )
+            else:
+                rawRenamed = raw.copy()
+                blRenamed = None if noBaseline else blRaw.copy()
+                
+            # Get channel groups
+            dataCH, nonDataCH, targetCH = cls.getChannelGroups(
+                rawRenamed.ch_names
+            )
             
             # Apply necessary filtering to all data channels
             if CONFIG.apply_filters:
-                rawFiltered = cls.applyFilters(raw, picks=dataCH, copy=True)
+                rawFiltered = cls.applyFilters(
+                    rawRenamed, picks=dataCH, copy=True
+                )
                 blFiltered = None if noBaseline else cls.extractBaseline(
                     rawFiltered, events, eventDict, copy=True
                 )
             else:
-                rawFiltered = raw.copy()
-                blFiltered = None if noBaseline else blRaw.copy()
+                rawFiltered = rawRenamed.copy()
+                blFiltered = None if noBaseline else blRenamed.copy()
             
             # Extract the metadata and corresponding events and event IDs
             metadata, events_md, eventDict_md = cls.getMetadata(
@@ -158,7 +169,6 @@ class AXCPT:
                     baseline=None
                 )
             
-        # TODO: change dataChannels to always be read from config
         return cls(
             data={
                 "raw" : raw,
@@ -189,7 +199,7 @@ class AXCPT:
     def channelGroups(self):
         with TempConfig(self.sessionConfigPath):
             dataCH, nonDataCH, targetCH = self.getChannelGroups(
-                self.data["raw"].ch_names
+                self.data["rawProcessed"].ch_names
             )
             return {
                 "dataCH" : dataCH,
@@ -313,6 +323,25 @@ class AXCPT:
             targetCH = dataCH    
             
         return dataCH, nonDataCH, targetCH
+    
+    @classmethod
+    def renameChannels(
+            cls,
+            raw: mne.io.BaseRaw,
+            copy: bool = True
+            ):
+        _raw = raw.copy() if copy else raw
+        
+        # Assume channel names in raw have the same size and order as the list
+        # of channel names returned bygetChannelNamesEEGO()
+        oldNames = _raw.ch_names
+        newNames = helpers.getChannelNamesEEGO()
+        mne.rename_channels(
+            _raw.info,
+            {k : v for (k, v) in zip(oldNames, newNames)}
+        )
+        
+        return _raw
     
     @classmethod
     def extractBaseline(
@@ -632,13 +661,16 @@ class AXCPT:
             includeMask: bool = False
             ):
         with TempConfig(self.sessionConfigPath):
-            if self.baseline["epochs"] is None and baseline in [False, None]:
+            baselineExists = self.baseline["epochs"] is None
+            if not baselineExists and baselineEpochMask not in [False, None]:
                 raise ValueError(
                     "Received `baseline != False`, but no baseline data exists"
                 )
                 
             # Setup dataframe for both baseline and normal data
             masks = {"data" : epochMask, "baseline" : baselineEpochMask}
+            if not baselineExists:
+                masks.pop("baseline")
             dfs = {}
             for name, mask in masks.items():
                 epochs = getattr(self, name)["epochs"]
@@ -676,19 +708,6 @@ class AXCPT:
                     df.at[0, "channel_mask"].count(True),
                     name
                 )
-                # # Report the number of channels and epochs that features will be
-                # # calculated for
-                # numSelected = {
-                #     "epochs" : df["epoch_mask"].sum(),
-                #     "channels" : df.at[0, "channel_mask"].count(True)
-                # }
-                # _log.info(
-                #     "Getting features for %s", 
-                #     ", ".join([f"{v} {k}" for (k, v) in numSelected.items()])
-                # )
-                # for k, v in numSelected.items():
-                #     if v == 0:
-                #         warnings.warn(f"Getting features for 0 {k}")
                 
                 # Get the data
                 # Use units="uV" to get units of "V" as there is an issue where
