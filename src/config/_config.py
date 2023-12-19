@@ -7,9 +7,8 @@ import yaml
 
 _log = logging.Logger(__name__)
 
-# TODO: clean up, change to inherit from base config and to use gradcpt implementation
-
 class _Config:
+    # TODO: change PATH to behave like a stack
     def __init__(self) -> None:
         # Get the path to the project root directory by searching for the
         # "closest" parent directory that contains a .gitignore file
