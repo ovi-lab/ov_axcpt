@@ -556,20 +556,24 @@ class AXCPT:
     def getClassifierData(
             self, 
             includeDropped: bool = False,
-            baseline: bool = True
+            baseline: bool|None = None
             ):
+        _baseline = baseline
+        if _baseline is None:
+            _baseline = self.baseline["epochs"] is not None
+            
         labels, blLabels = self.getClassifierLabels(
             includeCRT=False,
-            baseline=baseline
+            baseline=_baseline
         )
         features, blFeatures = self.getClassifierFeatures(
             epochMask=labels["select"],
-            baselineEpochMask=(blLabels["select"] if baseline else False),
+            baselineEpochMask=(blLabels["select"] if _baseline else False),
             includeDropped=True,
             includeMask=False
             )
         
-        if baseline:
+        if _baseline:
             keys = ["task", "baseline"]
             names = ["type"]
             labels = pd.concat(
