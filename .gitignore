@@ -171,3 +171,10 @@ cython_debug/
 ov_experiment/scenarios/data/*
 ov_experiment/scenarios/assets/*
 .vscode
+.vs/ov_axcpt/v17/workspaceFileList.bin
+.vs/ov_axcpt/v17/Browse.VC.db
+.vs/ov_axcpt/v17/.wsuo
+.vs/ov_axcpt/FileContentIndex/54f55256-a932-4500-a9b7-7c4e3b7c18f6.vsidx
+.vs/VSWorkspaceState.json
+.vs/slnx.sqlite
+.vs/ProjectSettings.json
