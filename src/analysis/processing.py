@@ -5,6 +5,7 @@ import logging
 import math
 import os
 import time
+from typing import Any
 import warnings
 
 from deepdiff import DeepDiff
@@ -20,10 +21,25 @@ from src.tools import helpers
 _log = logging.getLogger(__name__)
 
 class AXCPT:
-    def __init__(self, **attrs):
-        # TODO: change
-        for k, v in attrs.items():
-            self.__setattr__(k, v)
+    # Note: constructor should not be called directly by the user. Instead, use
+    # the provided factory method(s) to create the instance
+    def __init__(
+            self,
+            data: dict[str, mne.io.BaseRaw|mne.epochs.Epochs],
+            events: dict[str, np.ndarray],
+            eventDict: dict[str, dict[str, int]],
+            baseline: dict[str, mne.io.BaseRaw|mne.epochs.Epochs|None],
+            sessionDir: str,
+            sessionConfigPath: str,
+            rawDataPath: str
+            ):
+        self.data = data
+        self.events = events
+        self.eventDict = eventDict
+        self.baseline = baseline
+        self.sessionDir = sessionDir
+        self.sessionConfigPath = sessionConfigPath
+        self.rawDataPath = rawDataPath
     
     @classmethod
     def readSession(
@@ -81,16 +97,16 @@ class AXCPT:
             dataPath = sessionDir if configDataPath is None else configDataPath
             _kwargs = kwargs.copy()
             _kwargs.pop("path", None)
-            raw, dataPath = cls.loadData(path=dataPath, **_kwargs)
+            raw, dataPath = cls._loadData(path=dataPath, **_kwargs)
             
             # Get events with meaningful names
-            events, eventDict = cls.getEvents(raw)
+            events, eventDict = cls._getEvents(raw)
             
             # Get the baseline
             noBaseline = not any(
                 x.startswith("timing/baseline") for x in eventDict
             )
-            blRaw = None if noBaseline else cls.extractBaseline(
+            blRaw = None if noBaseline else cls._extractBaseline(
                 raw, events, eventDict, copy=True
             )
                 
@@ -100,8 +116,8 @@ class AXCPT:
             
             # Rename channels if necessary
             if raw.ch_names[0] == "Channel 1":
-                rawRenamed = cls.renameChannels(raw, copy=True)
-                blRenamed = None if noBaseline else cls.renameChannels(
+                rawRenamed = cls._renameChannels(raw, copy=True)
+                blRenamed = None if noBaseline else cls._renameChannels(
                     blRaw, copy=True
                 )
             else:
@@ -109,16 +125,16 @@ class AXCPT:
                 blRenamed = None if noBaseline else blRaw.copy()
                 
             # Get channel groups
-            dataCH, nonDataCH, targetCH = cls.getChannelGroups(
+            dataCH, nonDataCH, targetCH = cls._getChannelGroups(
                 rawRenamed.ch_names
             )
             
             # Apply necessary filtering to all data channels
             if CONFIG.apply_filters:
-                rawFiltered = cls.applyFilters(
+                rawFiltered = cls._applyFilters(
                     rawRenamed, picks=dataCH, copy=True
                 )
-                blFiltered = None if noBaseline else cls.extractBaseline(
+                blFiltered = None if noBaseline else cls._extractBaseline(
                     rawFiltered, events, eventDict, copy=True
                 )
             else:
@@ -126,7 +142,7 @@ class AXCPT:
                 blFiltered = None if noBaseline else blRenamed.copy()
             
             # Extract the metadata and corresponding events and event IDs
-            metadata, events_md, eventDict_md = cls.getMetadata(
+            metadata, events_md, eventDict_md = cls._getMetadata(
                 events, eventDict, rawFiltered.info["sfreq"]
             )
             
@@ -198,7 +214,7 @@ class AXCPT:
     @property
     def channelGroups(self):
         with TempConfig(self.sessionConfigPath):
-            dataCH, nonDataCH, targetCH = self.getChannelGroups(
+            dataCH, nonDataCH, targetCH = self._getChannelGroups(
                 self.data["rawProcessed"].ch_names
             )
             return {
@@ -208,7 +224,7 @@ class AXCPT:
             }
 
     @classmethod
-    def loadData(
+    def _loadData(
             cls,
             path: [None | str] = None, 
             checkSubdirs: bool = False,
@@ -217,7 +233,7 @@ class AXCPT:
         
         # TODO: add logging
         
-        # Use values from Config as defined at (approx) loadData call time -
+        # Use values from Config as defined at (approx) _loadData call time -
         # prevents issues arising from Config values changes during execution
         _CONFIG_SS = CONFIG.snapshot()
         
@@ -228,7 +244,7 @@ class AXCPT:
         # Determine the path to the raw data file to load, or the folder to
         # search for a data file
         if path is not None:
-            # Use the file or folder passed to loadData
+            # Use the file or folder passed to _loadData
             _path = path
         elif _CONFIG_SS["raw_data_path"] is not None:
             # Use the path to the data raw data file/folder specified in config
@@ -302,7 +318,7 @@ class AXCPT:
         return raw, dataPath
     
     @classmethod
-    def getChannelGroups(
+    def _getChannelGroups(
             cls,
             chNames: list[str]
             ) -> (list[str], list[str], list[str]):
@@ -325,7 +341,7 @@ class AXCPT:
         return dataCH, nonDataCH, targetCH
     
     @classmethod
-    def renameChannels(
+    def _renameChannels(
             cls,
             raw: mne.io.BaseRaw,
             copy: bool = True
@@ -344,7 +360,7 @@ class AXCPT:
         return _raw
     
     @classmethod
-    def extractBaseline(
+    def _extractBaseline(
             cls,
             raw: mne.io.BaseRaw,
             events,
@@ -366,7 +382,7 @@ class AXCPT:
         return _raw.crop(tmin=tRange[0], tmax=tRange[1], include_tmax=True)
     
     @classmethod
-    def applyFilters(
+    def _applyFilters(
             cls,
             raw: mne.io.BaseRaw,
             picks: str|list[str]|None = None,
@@ -392,7 +408,7 @@ class AXCPT:
         return rawFiltered
 
     @classmethod
-    def getEvents(
+    def _getEvents(
             cls,
             raw: mne.io.BaseRaw
             ):
@@ -438,7 +454,7 @@ class AXCPT:
         return events, eventDict
     
     @classmethod
-    def getMetadata(
+    def _getMetadata(
             cls,
             events,
             eventDict,
@@ -892,9 +908,3 @@ class AXCPT:
             )
             
         return dfs
-    
-    def trainClassifier(self, features):
-        pass
-        
-        
-        
