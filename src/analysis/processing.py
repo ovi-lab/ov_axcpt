@@ -30,17 +30,13 @@ class AXCPT:
             events: dict[str, np.ndarray],
             eventDict: dict[str, dict[str, int]],
             baseline: dict[str, mne.io.BaseRaw|mne.epochs.Epochs|None],
-            sessionDir: str,
-            sessionConfigPath: str,
-            rawDataPath: str
+            info: dict[str, Any]
             ):
         self.data = data
         self.events = events
         self.eventDict = eventDict
         self.baseline = baseline
-        self.sessionDir = sessionDir
-        self.sessionConfigPath = sessionConfigPath
-        self.rawDataPath = rawDataPath
+        self.info = info
     
     @classmethod
     def readSession(
@@ -59,13 +55,12 @@ class AXCPT:
         if len(matchingPaths) > 1:
             raise ValueError(
                 "Found multiple directories with session_name " +
-                f"'{_CONFIG_SS['session_name']}' in data_dir '{data_dir}': " +
-                f"{matchingPaths}"
+                f"'{sessionName}' in data_dir '{data_dir}': {matchingPaths}"
             )
         elif len(matchingPaths) == 0:
             raise ValueError(
-                "Found no directories with session_name " +
-                f"'{_CONFIG_SS['session_name']}' in data_dir '{data_dir}': "
+                f"Found no directories with session_name '{sessionName}' " +
+                f"in data_dir '{data_dir}': "
             )
         elif not os.path.isdir(matchingPaths[0]):
             raise ValueError(
@@ -93,6 +88,13 @@ class AXCPT:
             configPath = matchingPaths[0]
             
         with TempConfig(configPath):
+            if sessionName != CONFIG.session_name:
+                raise ValueError(
+                    "Expected session_name in config file to be " + 
+                    f"'{sessionName}', but got '{CONFIG.session_name}': " +
+                    str(configPath)
+                )
+            
             # Load the data. If the config does not specify specific data to
             # use, search the session directory for data
             configDataPath = CONFIG.raw_data_path
@@ -208,9 +210,12 @@ class AXCPT:
                 "rawProcessed" : blFiltered,
                 "epochs" : blEpochs
             },
-            sessionDir=sessionDir,
-            sessionConfigPath=configPath,
-            rawDataPath=dataPath
+            info = {
+                "sessionName" : sessionName,
+                "sessionDir" : sessionDir,
+                "sessionConfigPath" : configPath,
+                "rawDataPath" : dataPath
+            }
         )  
         
     @classmethod
@@ -247,7 +252,7 @@ class AXCPT:
         
     @property
     def channelGroups(self):
-        with TempConfig(self.sessionConfigPath):
+        with TempConfig(self.info["sessionConfigPath"]):
             dataCH, nonDataCH, targetCH = self._getChannelGroups(
                 self.data["rawProcessed"].ch_names
             )
@@ -256,9 +261,6 @@ class AXCPT:
                 "nonDataCH" : nonDataCH,
                 "targetCH" : targetCH
             }
-            
-    def getSessionConfig(self) -> TempConfig:
-        return TempConfig(self.sessionConfigPath)
     
     def getClassifierData(
             self, 
@@ -280,22 +282,22 @@ class AXCPT:
             includeMask=False
             )
         
-        if _baseline:
-            keys = ["task", "baseline"]
-            names = ["type"]
-            labels = pd.concat(
-                [labels, blLabels], keys=keys, names=names
-            )
-            features = pd.concat(
-                [features, blFeatures], keys=keys, names=names
-            )
+        # Combine regular and baseline data
+        keys = ["task", "baseline"]
+        allLabels = [labels, blLabels]
+        allFeatures = [features, blFeatures]
+        if not _baseline:
+            for seq in keys, allLabels, allFeatures:
+                seq.pop(1)
+        labels = pd.concat(allLabels, keys=keys, names=["type"])
+        features = pd.concat(allFeatures, keys=keys, names=["type"])
         
+        # Combine features and labels, and clean up dataframe
         cData = features.unstack(level="channel")
         cData.columns = pd.MultiIndex.from_product(
             [["features"], ["/".join(s) for s in cData.columns.values]]
         )
         cData.insert(0, "label", labels["label"])
-        
         if not includeDropped:
             for axis in (0, 1):
                 cData = cData.dropna(axis=axis, how="all")
@@ -307,7 +309,7 @@ class AXCPT:
             includeCRT: bool = False,
             baseline: bool = True
             ):
-        with TempConfig(self.sessionConfigPath):
+        with TempConfig(self.info["sessionConfigPath"]):
             alpha = CONFIG.alpha
             if not (alpha > 0 and alpha <= 0.5):
                 raise RuntimeError(
@@ -392,7 +394,7 @@ class AXCPT:
             includeDropped: bool = True,
             includeMask: bool = False
             ):
-        with TempConfig(self.sessionConfigPath):
+        with TempConfig(self.info["sessionConfigPath"]):
             blEpochMask = (
                 False if baselineEpochMask is None else baselineEpochMask
             )
@@ -481,10 +483,12 @@ class AXCPT:
             configSS = CONFIG.snapshot()
             includedConfigVals = CONFIG.protected["features_config_values"]
             configSS = {k : configSS[k] for k in includedConfigVals}
-            dataFilePath = os.path.relpath(self.rawDataPath, start=CONFIG.root)
+            dataFilePath = os.path.relpath(
+                self.info["rawDataPath"], start=CONFIG.root
+            )
             configSS["dataFilePath"] = dataFilePath.split(os.sep)
             cacheDir = os.path.join(
-                self.sessionDir, "analysis", "feature_cache"
+                self.info["sessionDir"], "analysis", "feature_cache"
             )
             # Find the saved feature config that matches the current config
             n = 3
