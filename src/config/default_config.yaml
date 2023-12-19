@@ -35,6 +35,30 @@ durations: # All in seconds
 
 # Analysis Parameters
 
+# Included for user reference only, should not be changed naively
+protected:
+  # List of all metrics that can be used to get features for AXCPT data
+  supported_metrics:
+    - ApEn
+    - SampEn
+    - FE
+    - MSE
+    - MFE
+  # List of all CONFIG values saved as the config when caching features. Assume
+  # these values uniquely identify the epochs data and corresponding features
+  features_config_values:
+    - num_trials_A_X
+    - num_trials_nA_nX
+    - durations
+    - session_name
+    - apply_filters
+    - notch_freqs
+    - l_freq
+    - h_freq
+    - epoch_tmin
+    - epoch_tmax
+
+
 raw_data_path: 
 session_name: 
 

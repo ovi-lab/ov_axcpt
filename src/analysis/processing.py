@@ -759,35 +759,16 @@ class AXCPT:
             df = df.drop(["epoch_mask", "channel_mask"], axis=1)
             
             # Specify the metrics to calculate
-            _metrics = {
-                "ApEn" : nk.entropy_approximate,
-                "SampEn" : nk.entropy_sample,
-                "FE" : nk.entropy_fuzzy,
-                "MSE" : nk.entropy_multiscale,
-                "MFE" : nk.complexity_fuzzymse
-            }
+            _metrics = helpers.getSupportedMetrics()
             metrics = CONFIG.metrics
             if metrics != "all":
-                if isinstance(metrics, str):
-                    _metrics = {metrics : _metrics[metrics]}
-                else:
-                    _metrics = {m : _metrics[m] for m in list(metrics)}
+                metrics = [metrics] if isinstance(metrics, str) else metrics
+                _metrics = {m : _metrics[m] for m in metrics}
                     
             # Check whether any features have already been saved for the
             # current set of config values
             configSS = CONFIG.snapshot()
-            includedConfigVals = [
-                "num_trials_A_X",
-                "num_trials_nA_nX",
-                "durations",
-                "session_name",
-                "apply_filters",
-                "notch_freqs",
-                "l_freq",
-                "h_freq",
-                "epoch_tmin",
-                "epoch_tmax"
-            ]
+            includedConfigVals = CONFIG.protected["features_config_values"]
             configSS = {k : configSS[k] for k in includedConfigVals}
             dataFilePath = os.path.relpath(self.rawDataPath, start=CONFIG.root)
             configSS["dataFilePath"] = dataFilePath.split(os.sep)

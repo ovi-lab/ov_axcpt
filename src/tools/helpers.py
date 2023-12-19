@@ -1,4 +1,7 @@
 import os
+from typing import Callable
+
+import neurokit2 as nk
 
 from src.config import CONFIG
 
@@ -25,3 +28,16 @@ def getChannelNamesEEGO() -> list[str]:
     with open(path, "r") as f:
         channelNames = [line.strip() for line in f]
     return channelNames
+
+def getSupportedMetrics() -> dict[str, Callable]:
+    supportedMetrics = {
+        "ApEn" : nk.entropy_approximate,
+        "SampEn" : nk.entropy_sample,
+        "FE" : nk.entropy_fuzzy,
+        "MSE" : nk.entropy_multiscale,
+        "MFE" : nk.complexity_fuzzymse
+    }
+    # Make sure that supported metrics matches those specified in config
+    assert set(supportedMetrics) == set(CONFIG.protected["supported_metrics"])
+    
+    return supportedMetrics
