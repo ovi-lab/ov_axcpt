@@ -19,3 +19,9 @@ def getOVStimCodes() -> dict[str, int]:
         )
         
     return ovStimCodes
+
+def getChannelNamesEEGO() -> list[str]:
+    path = os.path.join(CONFIG.root, CONFIG.eego_electrode_map_path)
+    with open(path, "r") as f:
+        channelNames = [line.strip() for line in f]
+    return channelNames
