@@ -2,6 +2,7 @@ import datetime
 import errno
 import glob
 import logging
+import math
 import os
 import time
 import warnings
@@ -118,7 +119,8 @@ class AXCPT:
                 events, eventDict, rawFiltered.info["sfreq"]
             )
             
-            # Epoch the data using the metadata and corresponding events / eventIDs
+            # Epoch the data using the metadata and corresponding
+            # events/eventIDs
             epochs = mne.Epochs(
                 rawFiltered,
                 events_md,
@@ -126,12 +128,35 @@ class AXCPT:
                 tmin=CONFIG.epoch_tmin,
                 tmax=CONFIG.epoch_tmax,
                 metadata=metadata,
-                preload=True
+                preload=True,
+                baseline=None
             )
-            blEpochs = None if noBaseline else mne.make_fixed_length_epochs(
-                blFiltered,
-                duration=(CONFIG.epoch_tmax - CONFIG.epoch_tmin)
-            )
+            # Create fixed length epochs of the baseline data
+            if noBaseline:
+                blEpochs = None
+            else:
+                blEvents = mne.make_fixed_length_events(
+                    blFiltered,
+                    id=1,
+                    duration=(CONFIG.epoch_tmax - CONFIG.epoch_tmin)
+                )
+                blMetadata, blEvents, blEventDict = mne.epochs.make_metadata(
+                    blEvents,
+                    {"epoch_start" : 1},
+                    0,
+                    (CONFIG.epoch_tmax - CONFIG.epoch_tmin),
+                    blFiltered.info["sfreq"]
+                )
+                blEpochs = mne.Epochs(
+                    blFiltered,
+                    blEvents,
+                    event_id=blEventDict,
+                    tmin=0,
+                    tmax=(CONFIG.epoch_tmax - CONFIG.epoch_tmin),
+                    metadata=blMetadata,
+                    preload=True,
+                    baseline=None
+                )
             
         # TODO: change dataChannels to always be read from config
         return cls(
@@ -485,14 +510,24 @@ class AXCPT:
     
     def getClassifierData(
             self, 
-            includeDropped: bool = False
+            includeDropped: bool = False,
+            baseline: bool = True
             ):
-        labels = self.getClassifierLabels(includeCRT=False)
-        features = self.getClassifierFeatures(
+        labels, blLabels = self.getClassifierLabels(
+            includeCRT=False,
+            baseline=baseline
+        )
+        features, blFeatures = self.getClassifierFeatures(
             epochMask=labels["select"],
+            baselineEpochMask=(blLabels["select"] if baseline else False),
             includeDropped=True,
             includeMask=False
             )
+        
+        if baseline:
+            keys = ["task", "baseline"]
+            labels = pd.concat([labels, blLabels], keys=keys)
+            features = pd.concat([features, blFeatures], keys=keys)
         
         cData = features.unstack(level="channel")
         cData.columns = pd.MultiIndex.from_product(
@@ -508,7 +543,8 @@ class AXCPT:
     
     def getClassifierLabels(
             self,
-            includeCRT: bool = False
+            includeCRT: bool = False,
+            baseline: bool = True
             ):
         with TempConfig(self.sessionConfigPath):
             alpha = CONFIG.alpha
@@ -516,6 +552,10 @@ class AXCPT:
                 raise RuntimeError(
                     "Config value `alpha` must be in range (0, 0.5], but " +
                     f"got {alpha}"
+                )
+            if self.baseline["epochs"] is None and baseline:
+                raise ValueError(
+                    "Received `baseline=True`, but no baseline data exists."
                 )
                 
             metadata = self.data["epochs"].metadata
@@ -534,6 +574,7 @@ class AXCPT:
             # Label the attention state
             quantiles = [0., alpha, 1. - alpha, 1.]
             labels = ["high", "medium", "low"]
+            categories = ["baseline"] + [x for x in reversed(labels)]
             if alpha == 0.5:
                 quantiles.pop(2)
                 labels.pop(1)
@@ -543,72 +584,131 @@ class AXCPT:
                 labels=labels,
                 precision=12
             )
+            df["label"] = df["label"].cat.set_categories(categories)
             
             # Drop any epochs that are missing data
             df.loc[df.isna().any(axis=1), [("select")]] = False
             
+            # Create labels for the baseline epochs
+            blEpochs = self.baseline["epochs"]
+            bl = None
+            if baseline:
+                bl = pd.DataFrame(index=blEpochs.metadata.index)
+                bl["epoch"] = bl.index
+                      
+                # Drop any extra epochs from the start/end of the baseline      
+                bl["select"] = False
+                n = math.floor(
+                    CONFIG.durations["baseline"] / blEpochs.times[-1]
+                )
+                start = max(0, math.ceil((len(bl) - n) / 2))
+                bl.iloc[start:(start + n), bl.columns.get_loc("select")] = True
+                
+                # Set the label
+                bl["label"] = pd.Categorical(
+                    ["baseline"] * len(bl),
+                    categories=categories,
+                    ordered=False
+                )
+                
+                bl.set_index("epoch", inplace=True)
+            
             if not includeCRT:
-                df = df.drop("corrected_response_time", axis=1)
+                df = df.drop(crt, axis=1)
             df.set_index("epoch", inplace=True)
             
-        return df
+        return df, bl
     
+    # for epochMask and baselineEpochMask:
+    #   specify True to use all epochs, or provide a series (or dataframe with
+    #   a column named "epochMask") with the same index as the data (and or
+    #   baseline) epochs metadata to use as a mask of which epochs to use, or
+    #   specify False so that no features are calculated and None is returned
     def getClassifierFeatures(
             self, 
-            epochMask: pd.DataFrame|pd.Series|None = None,
+            epochMask: pd.DataFrame|pd.Series|bool = True,
+            baselineEpochMask: pd.DataFrame|pd.Series|bool = False,
             includeDropped: bool = True,
             includeMask: bool = False
             ):
         with TempConfig(self.sessionConfigPath):
-            # Create a dataframe to store the features
-            df = pd.DataFrame(index=self.data["epochs"].metadata.index)
-            df["epoch"] = df.index
-            df["channel"] = len(df) * [self.data["epochs"].ch_names]
-            
-            # Specify which epochs to calculate features for
-            if epochMask is None:
-                df["epoch_mask"] = True
-            elif not df.index.equals(epochMask.index):
+            if self.baseline["epochs"] is None and baseline in [False, None]:
                 raise ValueError(
-                    "`epochMask` must have the same index as the metadata " +
-                    "of the epochs data"
+                    "Received `baseline != False`, but no baseline data exists"
                 )
-            else:
-                _epochMask = epochMask 
-                if isinstance(epochMask, pd.DataFrame):
-                    _epochMask = epochMask["epochMask"]
-                df.insert(len(df.columns), "epoch_mask", _epochMask)
-            # Specify which channels to calculate features for
-            channelMask = [
-                (x in self.channelGroups["targetCH"])
-                for x in self.data["epochs"].ch_names
-            ]
-            df["channel_mask"] = len(df) * [channelMask]
-            # Report the number of channels and epochs that features will be
-            # calculated for
-            numSelected = {
-                "epochs" : df["epoch_mask"].sum(),
-                "channels" : df.at[0, "channel_mask"].count(True)
-            }
-            _log.info(
-                "Getting features for %s", 
-                ", ".join([f"{v} {k}" for (k, v) in numSelected.items()])
-            )
-            for k, v in numSelected.items():
-                if v == 0:
-                    warnings.warn(f"Getting features for 0 {k}")
-            
-            # Get the data
-            # Use units="uV" to get units of "V" as there is an issue where
-            # when loading data into mne, mne interprets data recorded by
-            # openvibe (recorded with units of V) as having units of mV and
-            # incorrectly scales it.
-            df["data"] = [*self.data["epochs"].get_data(units="uV")]
-            
-            # Explode and organise rows by epoch, then channel
-            df = df.explode(["channel", "channel_mask", "data"])
-            df = df.set_index(["epoch", "channel"])
-            df["mask"] = df[["epoch_mask", "channel_mask"]].all(axis=1)
+                
+            # Setup dataframe for both baseline and normal data
+            masks = {"data" : epochMask, "baseline" : baselineEpochMask}
+            dfs = {}
+            for name, mask in masks.items():
+                epochs = getattr(self, name)["epochs"]
+                
+                # Create a dataframe to store the features
+                df = pd.DataFrame(index=epochs.metadata.index)
+                df["type"] = name
+                df["epoch"] = df.index
+                df["channel"] = len(df) * [epochs.ch_names]
+                
+                # Specify which epochs to calculate features for
+                if isinstance(mask, bool) or mask is None:
+                    df["epoch_mask"] = bool(mask)
+                elif not df.index.equals(mask.index):
+                    a = {"data": "epochMask", "baseline": "baselineEpochMask"}
+                    raise ValueError(
+                        f"`{a[name]}` must have the same index as the " +
+                        f"metadata of the {name} epochs"
+                    )
+                else:
+                    _mask = mask 
+                    if isinstance(mask, pd.DataFrame):
+                        _mask = mask["epochMask"]
+                    df.insert(len(df.columns), "epoch_mask", _mask)
+                # Specify which channels to calculate features for
+                channelMask = [
+                    (x in self.channelGroups["targetCH"])
+                    for x in epochs.ch_names
+                ]
+                df["channel_mask"] = len(df) * [channelMask]
+                
+                _log.info(
+                    "Getting features for %i epochs and %i channels of %s",
+                    df["epoch_mask"].sum(),
+                    df.at[0, "channel_mask"].count(True),
+                    name
+                )
+                # # Report the number of channels and epochs that features will be
+                # # calculated for
+                # numSelected = {
+                #     "epochs" : df["epoch_mask"].sum(),
+                #     "channels" : df.at[0, "channel_mask"].count(True)
+                # }
+                # _log.info(
+                #     "Getting features for %s", 
+                #     ", ".join([f"{v} {k}" for (k, v) in numSelected.items()])
+                # )
+                # for k, v in numSelected.items():
+                #     if v == 0:
+                #         warnings.warn(f"Getting features for 0 {k}")
+                
+                # Get the data
+                # Use units="uV" to get units of "V" as there is an issue where
+                # when loading data into mne, mne interprets data recorded by
+                # openvibe (recorded with units of V) as having units of mV and
+                # incorrectly scales it.
+                df["data"] = [*epochs.get_data(units="uV")]
+                
+                # Explode and organise rows by epoch, then channel
+                df = df.explode(["channel", "channel_mask", "data"])
+                df = df.set_index(["type", "epoch", "channel"])
+                df["mask"] = df[["epoch_mask", "channel_mask"]].all(axis=1)
+                
+                dfs[name] = df
+                
+            # Combine data and baseline dataframes into a single dataframe
+            df = pd.concat(dfs.values(), axis="index", copy=False)
+            for s in ["channel", "epoch"]:
+                if not df[s + "_mask"].any():
+                    warnings.warn(f"Getting features for 0 {s}s!")
             df = df.drop(["epoch_mask", "channel_mask"], axis=1)
             
             # Specify the metrics to calculate
@@ -654,10 +754,14 @@ class AXCPT:
                         featuresPath = os.path.join(
                             cacheDir, (f"features_%0{n}i.csv") % id
                         )
-                        cachedFeatures = pd.read_csv(
-                            featuresPath, index_col=df.index.names
+                        cached = pd.read_csv(
+                            featuresPath, 
+                            usecols=(lambda x : x in df.index.names)
                         )
-                        if cachedFeatures.index.equals(df.index):
+                        cached = cached.set_index(
+                            [x for x in df.index.names if x in cached.columns]
+                        )  
+                        if cached.index.equals(df.index):
                             break        
             else:
                 # Create new files for saving the features
@@ -744,7 +848,8 @@ class AXCPT:
                 for axis in (0, 1):
                     df = df.dropna(axis=axis, how="all")
             
-        return df
+        # Return features for the data and baseline seperately
+        return df.loc["data"], df.loc["baseline"]
     
     def trainClassifier(self, features):
         pass
