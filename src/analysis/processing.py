@@ -398,7 +398,6 @@ class AXCPT:
             blEpochMask = (
                 False if baselineEpochMask is None else baselineEpochMask
             )
-            # TODO: add support for stteing epochMask=False
               
             # Setup dataframe for both baseline and normal data
             # TODO: loop execution is slow, speed it up

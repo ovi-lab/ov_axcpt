@@ -8,7 +8,7 @@ import yaml
 _log = logging.Logger(__name__)
 
 class _Config:
-    # TODO: change PATH to behave like a stack
+    # TODO: change PATH to behave like a stack, or make it reentrant ?
     def __init__(self) -> None:
         # Get the path to the project root directory by searching for the
         # "closest" parent directory that contains a .gitignore file

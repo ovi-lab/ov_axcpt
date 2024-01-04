@@ -99,7 +99,7 @@
 					<TypeIdentifier>(0x330306dd, 0x74a95f98)</TypeIdentifier>
 					<Name>Filename</Name>
 					<DefaultValue></DefaultValue>
-					<Value>C:/Users/HP User/source/repos/ov_axcpt/ov_experiment/scenarios/data/record_p-3_2023.12.15-15.48.43.ov</Value>
+					<Value>C:/Users/HP User/source/repos/ov_axcpt/ov_experiment/scenarios/data/record_p-4_2023.12.18-14.58.16.ov</Value>
 					<Modifiability>false</Modifiability>
 				</Setting>
 			</Settings>
@@ -206,7 +206,7 @@
 					<TypeIdentifier>(0x330306dd, 0x74a95f98)</TypeIdentifier>
 					<Name>Filename</Name>
 					<DefaultValue>record-[$core{date}-$core{time}].gdf</DefaultValue>
-					<Value>C:/Users/HP User/source/repos/ov_axcpt/ov_experiment/scenarios/data/record_p-3_2023-12-15_15-48-43.gdf</Value>
+					<Value>C:/Users/HP User/source/repos/ov_axcpt/ov_experiment/scenarios/data/record_p-4_2023-12-18_14-58-16.gdf</Value>
 					<Modifiability>false</Modifiability>
 				</Setting>
 			</Settings>
